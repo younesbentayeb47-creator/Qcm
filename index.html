@@ -1,70 +1,1181 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>QCM Médicaux</title>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: #fff;
-    margin: 0;
-    padding: 20px;
-}
-h1 {
-    text-align: center;
-    color: #4caf50;
-}
-.qcm-box {
-    background: #222;
-    padding: 20px;
-    border-radius: 12px;
-    max-width: 600px;
-    margin: auto;
-}
-button {
-    padding: 15px;
-    background: #4caf50;
-    border: none;
-    color: white;
-    width: 100%;
-    font-size: 18px;
-    border-radius: 10px;
-    margin-top: 20px;
-}
-button:hover {
-    background: #45a049;
-}
-</style>
+  <meta charset="UTF-8" />
+  <title>QCM Médicaux – Epreuves</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 45%);
+      color: #e5e7eb;
+    }
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    h1, h2, h3 { margin: 0 0 8px; }
+    .card {
+      background: #020617;
+      border-radius: 18px;
+      border: 1px solid #1f2937;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.6);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #0b1120;
+      border: 1px solid #1f2937;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    input[type="text"], select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 14px;
+    }
+    input[type="text"]:focus, select:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 1px #4f46e5;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #4f46e5;
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button.secondary {
+      background: #0b1120;
+      border: 1px solid #374151;
+    }
+    button.danger {
+      background: #b91c1c;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .login-container {
+      max-width: 380px;
+      margin: 50px auto;
+      text-align: center;
+    }
+    .login-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .login-sub {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .flex {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .space-between { justify-content: space-between; }
+    .mt-4 { margin-top: 4px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-20 { margin-top: 20px; }
+    .mt-24 { margin-top: 24px; }
+    .qcm-question {
+      margin-bottom: 16px;
+      border-radius: 12px;
+      border: 1px solid #111827;
+      padding: 10px 12px;
+      background: #020617;
+    }
+    .qcm-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .qcm-options label {
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .qcm-options input[type="checkbox"] {
+      margin: 4px 0;
+    }
+    .chip-score {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      min-width: 60px;
+      text-align: center;
+    }
+    .chip-score.full { border-color: #22c55e; }
+    .chip-score.almost { border-color: #fbbf24; }
+    .chip-score.low { border-color: #f97316; }
+    .chip-score.zero { border-color: #ef4444; }
+    .text-muted { color: #9ca3af; font-size: 12px; }
+    .result-main {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #020617;
+      border: 1px solid #111827;
+      overflow: hidden;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg,#4f46e5,#22c55e);
+      transition: width 0.4s ease;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid #111827;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    th {
+      font-weight: 600;
+      color: #9ca3af;
+    }
+    .pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #0b1120;
+      border: 1px solid #111827;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid #111827;
+      background: #020617;
+      margin-right: 4px;
+      margin-top: 4px;
+      display: inline-block;
+    }
+    .advice-list {
+      font-size: 13px;
+    }
+    .advice-list li { margin-bottom: 4px; }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .toggle input { cursor: pointer; }
+    .mode-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .mode-pill.active {
+      border-color: #4f46e5;
+      background: #111827;
+    }
+    @media (max-width: 700px) {
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="app" id="app"></div>
 
-<h1>QCM Médicaux</h1>
+  <script>
+    /**********************
+     * DONNÉES QCM
+     *********************/
 
-<div class="qcm-box">
-    <p><b>Q1. Le Plasmodium vivax peut provoquer :</b></p>
-    
-    <label><input type="checkbox" id="a"> Des rechutes liées aux hypnozoïtes</label><br>
-    <label><input type="checkbox" id="b"> Des accès graves fréquents</label><br>
-    <label><input type="checkbox" id="c"> Une infection uniquement en Afrique</label><br>
+    // 20 QCM de paludisme (Parasito) + structure Myco / Viro vide pour l’instant
+    const QCM_DATA = {
+      "Parasitologie": {
+        "Paludisme": [
+          {
+            id: "palu-q1",
+            question: "Q1. Concernant les espèces de Plasmodium responsables du paludisme humain :",
+            theme: "Espèces de Plasmodium",
+            chapter: "Paludisme",
+            options: {
+              "A": "Plasmodium vivax est une espèce palustre humaine.",
+              "B": "Plasmodium knowlesi peut être responsable de paludisme chez l’humain.",
+              "C": "Plasmodium ovale est une espèce palustre humaine.",
+              "D": "Plasmodium falciparum est une espèce palustre humaine.",
+              "E": "Giardia lamblia est une espèce de Plasmodium."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Retenir les principales espèces palustres humaines : P. falciparum, P. vivax, P. ovale, P. malariae, P. knowlesi (Giardia n’est pas un Plasmodium)."
+          },
+          {
+            id: "palu-q2",
+            question: "Q2. Concernant le cycle hépatique de Plasmodium :",
+            theme: "Cycle hépatique",
+            chapter: "Paludisme",
+            options: {
+              "A": "L’anophèle femelle inocule des sporozoïtes à l’homme lors de la piqûre.",
+              "B": "La schizogonie érythrocytaire a lieu dans les hépatocytes.",
+              "C": "La phase hépatique est en général cliniquement silencieuse.",
+              "D": "Les hypnozoïtes hépatiques sont caractéristiques de P. falciparum.",
+              "E": "La rupture des hépatocytes libère des mérozoïtes dans la circulation sanguine."
+            },
+            correct: ["A","C","E"],
+            advice: "Bien distinguer phase hépatique (silencieuse) et phase érythrocytaire. Les hypnozoïtes concernent P. vivax et P. ovale, pas P. falciparum."
+          },
+          {
+            id: "palu-q3",
+            question: "Q3. Concernant les hypnozoïtes :",
+            theme: "Hypnozoïtes / rechutes",
+            chapter: "Paludisme",
+            options: {
+              "A": "Ils sont présents chez toutes les espèces de Plasmodium.",
+              "B": "Ils restent dans le foie sous forme dormante.",
+              "C": "Ils expliquent les rechutes de P. vivax et P. ovale.",
+              "D": "Ils sont responsables des accès graves immédiats à P. falciparum.",
+              "E": "Ils sont la cible d’un traitement par primaquine."
+            },
+            correct: ["B","C","E"],
+            advice: "Hypnozoïtes = formes hépatiques dormantes de P. vivax / P. ovale, responsables de rechutes et ciblées par la primaquine."
+          },
+          {
+            id: "palu-q4",
+            question: "Q4. À propos des reviviscences :",
+            theme: "Reviviscences",
+            chapter: "Paludisme",
+            options: {
+              "A": "Elles nécessitent toujours une nouvelle piqûre d’anophèle.",
+              "B": "Elles surviennent à distance de l’infection initiale.",
+              "C": "Elles sont liées à la réactivation d’hypnozoïtes hépatiques.",
+              "D": "Elles correspondent à la réactivation de formes érythrocytaires résiduelles.",
+              "E": "Elles ne concernent que Plasmodium falciparum."
+            },
+            correct: ["B","D"],
+            advice: "Reviviscence = recrudescence à partir de formes sanguines persistantes. Rechute = hypnozoïtes hépatiques (P. vivax, P. ovale)."
+          },
+          {
+            id: "palu-q5",
+            question: "Q5. Concernant Plasmodium falciparum :",
+            theme: "P. falciparum / formes graves",
+            chapter: "Paludisme",
+            options: {
+              "A": "Il infecte des hématies de tout âge.",
+              "B": "Il est associé à une parasitémie potentiellement très élevée.",
+              "C": "Il est l’espèce la plus fréquemment responsable de formes graves.",
+              "D": "Il est caractérisé par la présence d’hypnozoïtes hépatiques.",
+              "E": "Il est strictement limité à l’Afrique subsaharienne."
+            },
+            correct: ["A","B","C"],
+            advice: "P. falciparum : hématies de tout âge, parasitémie élevée, formes graves fréquentes, pas d’hypnozoïtes et distribution surtout Afrique."
+          },
+          {
+            id: "palu-q6",
+            question: "Q6. À propos de la clinique de l’accès palustre simple :",
+            theme: "Clinique accès simple",
+            chapter: "Paludisme",
+            options: {
+              "A": "Il associe classiquement fièvre, frissons et sueurs.",
+              "B": "Un ictère isolé sans fièvre est typique d’un accès simple.",
+              "C": "Des signes digestifs (nausées, vomissements, diarrhée) peuvent être présents.",
+              "D": "La fièvre peut être irrégulière au début, sans périodicité nette.",
+              "E": "Un choc hémodynamique d’emblée est habituel dans l’accès simple."
+            },
+            correct: ["A","C","D"],
+            advice: "Accès simple : tableau fébrile souvent peu spécifique. Ictère isolé ou choc évoquent plutôt une forme grave ou autre pathologie."
+          },
+          {
+            id: "palu-q7",
+            question: "Q7. Parmi les signes suivants, lesquels sont des critères de gravité du paludisme (OMS) ?",
+            theme: "Signes de gravité",
+            chapter: "Paludisme",
+            options: {
+              "A": "Troubles de la conscience ou coma (Glasgow < 11).",
+              "B": "Hypoglycémie.",
+              "C": "Hémoglobine à 9 g/dL chez l’adulte.",
+              "D": "Détresse respiratoire.",
+              "E": "Parasitémie élevée chez un voyageur non immun."
+            },
+            correct: ["A","B","D","E"],
+            advice: "Gravité : atteinte neurologique, détresse respiratoire, hypoglycémie, anémie sévère, hyperparasitémie, etc."
+          },
+          {
+            id: "palu-q8",
+            question: "Q8. Concernant le diagnostic biologique du paludisme :",
+            theme: "Diag biologique",
+            chapter: "Paludisme",
+            options: {
+              "A": "La goutte épaisse est l’examen de référence pour mettre en évidence le parasite.",
+              "B": "Le frottis sanguin mince permet d’identifier l’espèce et de quantifier la parasitémie.",
+              "C": "Un test diagnostique rapide (TDR) négatif permet d’exclure formellement un paludisme.",
+              "D": "Les prélèvements doivent idéalement être réalisés après 7 jours d’apyrexie.",
+              "E": "En cas de forte suspicion clinique, les examens doivent être répétés si le premier est négatif."
+            },
+            correct: ["A","B","E"],
+            advice: "TDR négatif n’élimine pas un paludisme si la suspicion est forte. Goutte épaisse + frottis restent les examens de référence."
+          },
+          {
+            id: "palu-q9",
+            question: "Q9. Fièvre chez un patient revenant d’une zone d’endémie palustre :",
+            theme: "Retour de zone d’endémie",
+            chapter: "Paludisme",
+            options: {
+              "A": "Tout accès fébrile doit faire considérer un paludisme jusqu’à preuve du contraire.",
+              "B": "Un délai de plus de 6 mois après le retour permet d’exclure un paludisme.",
+              "C": "L’absence de fièvre au moment de l’examen élimine un paludisme.",
+              "D": "L’hospitalisation est systématique chez tout voyageur fébrile revenant de zone d’endémie.",
+              "E": "Une chimioprophylaxie correcte n’exclut pas la possibilité d’un paludisme."
+            },
+            correct: ["A","E"],
+            advice: "Toute fièvre au retour doit faire évoquer un paludisme, même en cas de prophylaxie."
+          },
+          {
+            id: "palu-q10",
+            question: "Q10. Concernant la prévention du paludisme chez le voyageur :",
+            theme: "Prévention / prophylaxie",
+            chapter: "Paludisme",
+            options: {
+              "A": "L’usage de moustiquaires imprégnées d’insecticide est recommandé.",
+              "B": "La chimioprophylaxie supprime totalement le risque de paludisme.",
+              "C": "Des molécules comme l’atovaquone-proguanil, la doxycycline ou la méfloquine peuvent être utilisées en prophylaxie selon le contexte.",
+              "D": "Certaines chimioprophylaxies doivent être poursuivies après le retour.",
+              "E": "La prévention n’est pas nécessaire pour un séjour de moins de 24 heures."
+            },
+            correct: ["A","C","D"],
+            advice: "La prophylaxie diminue le risque mais ne l’annule pas. Toujours associée aux mesures anti-moustiques."
+          },
+          {
+            id: "palu-q11",
+            question: "Q11. À propos de la prise en charge d’un accès palustre grave à P. falciparum :",
+            theme: "Traitement accès grave",
+            chapter: "Paludisme",
+            options: {
+              "A": "Il s’agit d’une urgence vitale.",
+              "B": "Tout accès à P. vivax est, par définition, un accès grave.",
+              "C": "L’artésunate par voie intraveineuse est le traitement de choix.",
+              "D": "La quinine IV peut être utilisée sans surveillance de la glycémie.",
+              "E": "Un transfert en service de réanimation peut être nécessaire."
+            },
+            correct: ["A","C","E"],
+            advice: "Accès grave = urgence vitale. Artésunate IV recommandé, avec surveillance et réanimation si besoin."
+          },
+          {
+            id: "palu-q12",
+            question: "Q12. Concernant le traitement d’un accès simple à P. falciparum chez un adulte non enceinte :",
+            theme: "Traitement accès simple falciparum",
+            chapter: "Paludisme",
+            options: {
+              "A": "Il repose sur un traitement combiné à base d’artémisinine (CTA) per os.",
+              "B": "La durée du traitement est en général de 3 jours.",
+              "C": "Une cure de primaquine est systématiquement associée pour éliminer les hypnozoïtes.",
+              "D": "Une hospitalisation est toujours obligatoire, quel que soit le contexte.",
+              "E": "Un contrôle clinique et biologique est recommandé à 48–72 heures."
+            },
+            correct: ["A","B","E"],
+            advice: "CTA per os 3 jours pour l’accès simple. Pas de primaquine dans P. falciparum."
+          },
+          {
+            id: "palu-q13",
+            question: "Q13. Concernant les rechutes palustres :",
+            theme: "Rechutes (hypnozoïtes)",
+            chapter: "Paludisme",
+            options: {
+              "A": "Elles surviennent après une phase d’apyrexie suivant un traitement initial correct.",
+              "B": "Elles concernent surtout P. vivax et P. ovale.",
+              "C": "Elles sont liées à la persistance de formes sanguines dans les hématies.",
+              "D": "Elles peuvent être prévenues par un traitement radical par primaquine.",
+              "E": "Elles surviennent uniquement pendant la chimioprophylaxie."
+            },
+            correct: ["A","B","D"],
+            advice: "Rechute = hypnozoïtes hépatiques. Reviviscence = recrudescence de formes sanguines."
+          },
+          {
+            id: "palu-q14",
+            question: "Q14. À propos du paludisme chez les patients splénectomisés :",
+            theme: "Situations particulières : splénectomie",
+            chapter: "Paludisme",
+            options: {
+              "A": "Le risque de formes graves est majoré.",
+              "B": "Aucune prophylaxie antipaludique n’est nécessaire.",
+              "C": "La rate participe à l’élimination des hématies parasitées.",
+              "D": "L’absence de rate rend la fièvre impossible.",
+              "E": "Une vaccination antipaludique spécifique est obligatoire avant le voyage."
+            },
+            correct: ["A","C"],
+            advice: "La rate est clé pour l’épuration des hématies parasitées. Splénectomisés = très haut risque."
+          },
+          {
+            id: "palu-q15",
+            question: "Q15. Concernant le paludisme et la grossesse :",
+            theme: "Paludisme et grossesse",
+            chapter: "Paludisme",
+            options: {
+              "A": "La femme enceinte est plus à risque de formes graves de paludisme.",
+              "B": "Un paludisme congénital est possible.",
+              "C": "Certaines molécules de prophylaxie ou de traitement sont contre-indiquées au 1er trimestre.",
+              "D": "La chimioprophylaxie n’est pas recommandée pendant la grossesse.",
+              "E": "Il est préférable d’éviter, si possible, les séjours en zone d’endémie pendant la grossesse."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Grossesse = terrain à risque. Adapter prophylaxie/traitement et éviter les zones de forte transmission si possible."
+          },
+          {
+            id: "palu-q16",
+            question: "Q16. Concernant Plasmodium malariae :",
+            theme: "P. malariae",
+            chapter: "Paludisme",
+            options: {
+              "A": "Il donne typiquement une fièvre tierce (48 h).",
+              "B": "Il peut être responsable de néphropathies chroniques.",
+              "C": "Il présente des hypnozoïtes hépatiques.",
+              "D": "Il est responsable de parasitémies très élevées comparables à P. falciparum.",
+              "E": "Il peut persister de nombreuses années chez un même patient."
+            },
+            correct: ["B","E"],
+            advice: "P. malariae : fièvre quartane (72 h), évolution prolongée, néphropathies possibles."
+          },
+          {
+            id: "palu-q17",
+            question: "Q17. À propos de la périodicité fébrile dans le paludisme :",
+            theme: "Périodicité fébrile",
+            chapter: "Paludisme",
+            options: {
+              "A": "Les accès de P. falciparum sont souvent irréguliers au début.",
+              "B": "Une fièvre tierce (48 h) est typique de P. vivax et P. ovale.",
+              "C": "Une périodicité parfaitement régulière est indispensable au diagnostic.",
+              "D": "La prise d’antipyrétiques peut masquer la périodicité des accès.",
+              "E": "P. malariae donne classiquement une fièvre quartane (72 h)."
+            },
+            correct: ["A","B","D","E"],
+            advice: "La périodicité aide mais n’est ni constante ni indispensable, surtout si antipyrétiques."
+          },
+          {
+            id: "palu-q18",
+            question: "Q18. Concernant les tests diagnostiques rapides (TDR) du paludisme :",
+            theme: "TDR paludisme",
+            chapter: "Paludisme",
+            options: {
+              "A": "Ils détectent le plus souvent des antigènes de P. falciparum.",
+              "B": "Ils sont sensibles à 100 % quelle que soit la parasitémie.",
+              "C": "Ils peuvent rester positifs plusieurs jours après la clairance parasitaire.",
+              "D": "Ils permettent de quantifier la parasitémie.",
+              "E": "Ils doivent idéalement être complétés par une goutte épaisse et un frottis sanguin."
+            },
+            correct: ["A","C","E"],
+            advice: "Les TDR sont utiles mais imparfaits : pas de quantification, possible persistance de positivité après traitement."
+          },
+          {
+            id: "palu-q19",
+            question: "Q19. Traitement des infections à P. vivax ou P. ovale :",
+            theme: "Traitement vivax/ovale",
+            chapter: "Paludisme",
+            options: {
+              "A": "Un CTA per os est utilisé pour traiter la phase sanguine.",
+              "B": "La primaquine permet d’éradiquer les hypnozoïtes hépatiques.",
+              "C": "La primaquine est contre-indiquée en cas de déficit en G6PD.",
+              "D": "En l’absence de traitement par primaquine, le risque de rechute persiste.",
+              "E": "Le schéma thérapeutique est strictement identique à celui d’un accès à P. falciparum sans adaptation."
+            },
+            correct: ["A","B","C","D"],
+            advice: "P. vivax/ovale : traiter phase sanguine + traitement radical (primaquine) si G6PD OK, sinon rechutes."
+          },
+          {
+            id: "palu-q20",
+            question: "Q20. Épidémiologie du paludisme :",
+            theme: "Épidémiologie",
+            chapter: "Paludisme",
+            options: {
+              "A": "P. falciparum prédomine en Afrique subsaharienne.",
+              "B": "P. vivax est fréquent en Asie et en Amérique latine.",
+              "C": "Le paludisme d’importation en France est majoritairement dû à P. falciparum.",
+              "D": "L’absence totale d’anophèles en Europe rend impossible toute transmission autochtone.",
+              "E": "Le paludisme est une maladie à déclaration obligatoire dans plusieurs pays, dont la France."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Bien connaître la répartition des espèces et le contexte de paludisme d’importation."
+          }
+        ],
+        // Chapitres à remplir plus tard avec tes annales
+        "Toxoplasmose": [],
+        "Amoebose": []
+      },
+      "Mycologie": {
+        "Mycoses superficielles": [],
+        "Mycoses profondes": []
+      },
+      "Virologie": {
+        "VIH": [],
+        "Hépatites virales": [],
+        "Viro diverses": []
+      }
+    };
 
-    <button onclick="corriger()">Corriger</button>
-    <p id="resultat"></p>
-</div>
+    /**********************
+     * STOCKAGE LOCAL (multi-utilisateurs)
+     *********************/
 
-<script>
-function corriger() {
-    let a = document.getElementById("a").checked;
-    let b = document.getElementById("b").checked;
-    let c = document.getElementById("c").checked;
+    const STORAGE_KEY_USER = "qcm_multi_user_v1";
+    const STORAGE_KEY_HISTORY = "qcm_history_v1";
 
-    if (a && !b && !c) {
-        document.getElementById("resultat").innerHTML = "<span style='color:#4caf50'>✔ Bonne réponse !</span>";
-    } else {
-        document.getElementById("resultat").innerHTML = "<span style='color:red'>❌ Incorrect</span><br>La bonne réponse est : A";
+    function saveLocal(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
     }
-}
-</script>
+    function loadLocal(key, defaultValue) {
+      const raw = localStorage.getItem(key);
+      if (!raw) return defaultValue;
+      try { return JSON.parse(raw); } catch { return defaultValue; }
+    }
 
+    const app = document.getElementById("app");
+
+    function render() {
+      const currentUser = loadLocal(STORAGE_KEY_USER, null);
+      if (!currentUser) {
+        renderLogin();
+      } else {
+        renderMain(currentUser);
+      }
+    }
+
+    /**********************
+     * LOGIN MULTI-UTILISATEUR
+     *********************/
+
+    function renderLogin() {
+      app.innerHTML = "";
+      const container = document.createElement("div");
+      container.className = "login-container card";
+
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const userSet = new Set(history.map(h => h.user));
+      const userList = Array.from(userSet);
+
+      let lastUser = null;
+      if (history.length > 0) lastUser = history[history.length - 1].user;
+
+      container.innerHTML = `
+        <div class="login-title">QCM Médicaux – Epreuves</div>
+        <div class="login-sub">
+          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
+          Multi-utilisateurs : chacun garde ses scores.
+        </div>
+        <div class="mt-16">
+          <label for="login-name">Nom / Pseudo</label>
+          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
+        </div>
+        ${userList.length ? `
+        <div class="mt-12">
+          <div class="text-muted">Utilisateurs récents :</div>
+          <div class="mt-4 flex">
+            ${userList.map(u => `
+              <button type="button" class="secondary" data-user="${u}">
+                ${u === lastUser ? "⭐ " : ""}${u}
+              </button>
+            `).join("")}
+          </div>
+        </div>` : ""}
+        <div class="mt-16">
+          <button id="login-btn"><span>Entrer</span></button>
+        </div>
+      `;
+
+      app.appendChild(container);
+
+      const input = container.querySelector("#login-name");
+      const btn = container.querySelector("#login-btn");
+      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
+
+      btn.addEventListener("click", () => {
+        const name = (input.value || "").trim();
+        if (!name) {
+          alert("Entre au moins un prénom ou un pseudo 🙂");
+          return;
+        }
+        saveLocal(STORAGE_KEY_USER, { name });
+        render();
+      });
+
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") btn.click();
+      });
+
+      existingBtns.forEach(b => {
+        b.addEventListener("click", () => {
+          const user = b.getAttribute("data-user");
+          saveLocal(STORAGE_KEY_USER, { name: user });
+          render();
+        });
+      });
+    }
+
+    /**********************
+     * VUE PRINCIPALE
+     *********************/
+
+    function renderMain(user) {
+      app.innerHTML = "";
+
+      // HEADER
+      const headerCard = document.createElement("div");
+      headerCard.className = "card";
+      headerCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h1>Bonjour, ${user.name} 👋</h1>
+            <div class="text-muted">
+              Mode épreuve (20 QCM) avec dossiers par matière et chapitres. Scores séparés par utilisateur.
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">Bêta exam-style</span>
+            <button class="secondary" id="logout-btn">Changer d’utilisateur</button>
+          </div>
+        </div>
+      `;
+      app.appendChild(headerCard);
+      headerCard.querySelector("#logout-btn").addEventListener("click", () => {
+        saveLocal(STORAGE_KEY_USER, null);
+        render();
+      });
+
+      // Sélecteurs matière / chapitre / mode
+      const selectorCard = document.createElement("div");
+      selectorCard.className = "card";
+
+      const matieres = Object.keys(QCM_DATA);
+      const defaultMatiere = matieres[0];
+      const chapitres = Object.keys(QCM_DATA[defaultMatiere]);
+      const defaultChapitre = chapitres[0];
+
+      selectorCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Paramètres de l’épreuve</h2>
+            <div class="text-muted">
+              Choisis la matière, le chapitre ou une épreuve mélangeant les chapitres d’une même matière.
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">Mode EDN</span>
+          </div>
+        </div>
+        <div class="mt-8">
+          <label for="select-matiere">Matière</label>
+          <select id="select-matiere"></select>
+        </div>
+        <div class="mt-8">
+          <label for="select-chapitre">Chapitre</label>
+          <select id="select-chapitre"></select>
+        </div>
+        <div class="mt-8 flex">
+          <div id="mode-chapitre" class="mode-pill active" data-mode="chapitre">Mode chapitre (20 QCM du chapitre)</div>
+          <div id="mode-matiere" class="mode-pill" data-mode="matiere">Mode épreuve matière (chapitres mélangés)</div>
+        </div>
+        <div class="mt-12 flex space-between">
+          <div style="flex:1; max-width: 180px;">
+            <label for="nb-qcm">Nombre de QCM</label>
+            <input type="number" id="nb-qcm" min="1" max="50" value="20" />
+          </div>
+          <div class="mt-8">
+            <span class="pill" id="infos-qcm"></span>
+          </div>
+        </div>
+        <div class="mt-16 flex space-between">
+          <button id="btn-start">Lancer l’épreuve</button>
+          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores</button>
+        </div>
+      `;
+      app.appendChild(selectorCard);
+
+      const selectMatiere = selectorCard.querySelector("#select-matiere");
+      const selectChapitre = selectorCard.querySelector("#select-chapitre");
+      const modeChapitrePill = selectorCard.querySelector("#mode-chapitre");
+      const modeMatierePill = selectorCard.querySelector("#mode-matiere");
+      const nbQcmInput = selectorCard.querySelector("#nb-qcm");
+      const infosQcmSpan = selectorCard.querySelector("#infos-qcm");
+      const btnStart = selectorCard.querySelector("#btn-start");
+      const btnClearUser = selectorCard.querySelector("#btn-clear-user");
+
+      matieres.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        selectMatiere.appendChild(opt);
+      });
+      selectMatiere.value = defaultMatiere;
+
+      function updateChapitres() {
+        selectChapitre.innerHTML = "";
+        const matiere = selectMatiere.value;
+        const chapList = Object.keys(QCM_DATA[matiere]);
+        chapList.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          selectChapitre.appendChild(opt);
+        });
+        selectChapitre.value = chapList[0];
+      }
+
+      updateChapitres();
+
+      let currentMode = "chapitre"; // ou "matiere"
+
+      function updateMode(mode) {
+        currentMode = mode;
+        if (mode === "chapitre") {
+          modeChapitrePill.classList.add("active");
+          modeMatierePill.classList.remove("active");
+        } else {
+          modeChapitrePill.classList.remove("active");
+          modeMatierePill.classList.add("active");
+        }
+        updateInfoQcm();
+      }
+
+      function getAvailableQuestions() {
+        const matiere = selectMatiere.value;
+        const chapitre = selectChapitre.value;
+        if (currentMode === "chapitre") {
+          return QCM_DATA[matiere][chapitre] || [];
+        } else {
+          // mode épreuve matière = mélange de tous les chapitres de la matière
+          const all = [];
+          const chapMap = QCM_DATA[matiere];
+          Object.keys(chapMap).forEach(ch => {
+            all.push(...chapMap[ch]);
+          });
+          return all;
+        }
+      }
+
+      function updateInfoQcm() {
+        const questions = getAvailableQuestions();
+        const n = questions.length;
+        const bar = "Barème : 0 faute = 1 ; 1 faute = 0,5 ; 2 fautes = 0,2 ; ≥3 fautes = 0";
+        infosQcmSpan.textContent = `${n} QCM dispo · ${bar}`;
+      }
+
+      modeChapitrePill.addEventListener("click", () => updateMode("chapitre"));
+      modeMatierePill.addEventListener("click", () => updateMode("matiere"));
+
+      selectMatiere.addEventListener("change", () => {
+        updateChapitres();
+        updateInfoQcm();
+      });
+      selectChapitre.addEventListener("change", updateInfoQcm);
+      nbQcmInput.addEventListener("change", () => {
+        const v = parseInt(nbQcmInput.value || "20", 10);
+        if (v < 1) nbQcmInput.value = 1;
+      });
+
+      btnClearUser.addEventListener("click", () => {
+        if (!confirm("Effacer tout ton historique pour ce compte ?")) return;
+        const history = loadLocal(STORAGE_KEY_HISTORY, []);
+        const filtered = history.filter(h => h.user !== user.name);
+        saveLocal(STORAGE_KEY_HISTORY, filtered);
+        alert("Historique effacé pour " + user.name);
+        render();
+      });
+
+      // Cartes épreuve + historique
+      const examCard = document.createElement("div");
+      examCard.className = "card";
+      examCard.id = "exam-card";
+      app.appendChild(examCard);
+
+      const historyCard = document.createElement("div");
+      historyCard.className = "card";
+      historyCard.id = "history-card";
+      app.appendChild(historyCard);
+
+      btnStart.addEventListener("click", () => {
+        const questionsPool = getAvailableQuestions();
+        if (!questionsPool.length) {
+          alert("Pas encore de QCM dans ce dossier (matière/chapitre).");
+          return;
+        }
+        const nRequested = parseInt(nbQcmInput.value || "20", 10);
+        const questions = pickRandomQuestions(questionsPool, nRequested);
+        renderExam(user, questions, {
+          matiere: selectMatiere.value,
+          chapitre: selectChapitre.value,
+          mode: currentMode
+        }, examCard, historyCard);
+      });
+
+      updateInfoQcm();
+      renderHistory(user, historyCard);
+    }
+
+    /**********************
+     * UTILITAIRES
+     *********************/
+
+    function pickRandomQuestions(pool, n) {
+      const arr = [...pool];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.slice(0, Math.min(n, arr.length));
+    }
+
+    // Barème :
+    // 0 faute -> 1
+    // 1 faute -> 0,5
+    // 2 fautes -> 0,2
+    // ≥3 fautes -> 0
+    function gradeQuestion(question, selected) {
+      const correct = question.correct;
+      const correctSet = new Set(correct);
+      const selectedSet = new Set(selected);
+
+      let errors = 0;
+
+      selectedSet.forEach(letter => {
+        if (!correctSet.has(letter)) errors++;
+      });
+      correctSet.forEach(letter => {
+        if (!selectedSet.has(letter)) errors++;
+      });
+
+      let score = 0;
+      if (errors === 0) score = 1;
+      else if (errors === 1) score = 0.5;
+      else if (errors === 2) score = 0.2;
+      else score = 0;
+
+      let comment = "";
+      if (errors === 0) comment = "✅ Parfait, aucune erreur sur cette question.";
+      else if (errors === 1) comment = "🟡 Une seule erreur : presque parfait, mais à revoir rapidement.";
+      else if (errors === 2) comment = "🟠 Deux erreurs : notion fragile, à retravailler.";
+      else comment = "🔴 Trois erreurs ou plus : revoir le cours sur ce point.";
+
+      return { score, errorsCount: errors, comment };
+    }
+
+    /**********************
+     * RENDU ÉPREUVE
+     *********************/
+
+    function renderExam(user, questions, meta, examCard, historyCard) {
+      examCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Epreuve – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
+            <div class="text-muted">
+              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"} · ${questions.length} QCM
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">En cours</span>
+          </div>
+        </div>
+      `;
+
+      const form = document.createElement("div");
+      form.id = "exam-form";
+
+      questions.forEach((q, index) => {
+        const qDiv = document.createElement("div");
+        qDiv.className = "qcm-question";
+        qDiv.dataset.qid = q.id;
+
+        let optionsHtml = "";
+        for (const [letter, text] of Object.entries(q.options)) {
+          optionsHtml += `
+            <label>
+              <input type="checkbox" name="${q.id}" value="${letter}" />
+              <span><strong>${letter}.</strong> ${text}</span>
+            </label>
+          `;
+        }
+
+        qDiv.innerHTML = `
+          <div class="flex space-between">
+            <div class="qcm-title">${index + 1}. ${q.question}</div>
+            <div class="chip-score" id="score-${q.id}">– / 1</div>
+          </div>
+          <div class="text-muted">Matière : ${meta.matiere} · Chapitre : ${q.chapter || meta.chapitre} · Thème : ${q.theme}</div>
+          <div class="qcm-options mt-8">
+            ${optionsHtml}
+          </div>
+          <div class="text-muted mt-8" id="feedback-${q.id}"></div>
+        `;
+        form.appendChild(qDiv);
+      });
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "mt-16 flex space-between";
+      actionsDiv.innerHTML = `
+        <button id="btn-corriger">Corriger l’épreuve</button>
+        <button class="secondary" id="btn-reset">Effacer toutes les réponses</button>
+      `;
+
+      examCard.appendChild(form);
+      examCard.appendChild(actionsDiv);
+
+      const btnCorriger = examCard.querySelector("#btn-corriger");
+      const btnReset = examCard.querySelector("#btn-reset");
+
+      btnCorriger.addEventListener("click", () => {
+        corrigerEpreuve(user, questions, meta, examCard, historyCard);
+      });
+
+      btnReset.addEventListener("click", () => {
+        const checkboxes = examCard.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => cb.checked = false);
+        questions.forEach(q => {
+          const scoreChip = document.getElementById(`score-${q.id}`);
+          const feedback = document.getElementById(`feedback-${q.id}`);
+          if (scoreChip) {
+            scoreChip.textContent = "– / 1";
+            scoreChip.className = "chip-score";
+          }
+          if (feedback) feedback.textContent = "";
+        });
+      });
+    }
+
+    function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
+      let totalScore = 0;
+      const totalMax = questions.length;
+      const perQuestion = [];
+
+      questions.forEach(q => {
+        const checkboxes = examCard.querySelectorAll(`input[name='${q.id}']:checked`);
+        const selected = Array.from(checkboxes).map(cb => cb.value);
+        const { score, errorsCount, comment } = gradeQuestion(q, selected);
+
+        totalScore += score;
+        perQuestion.push({
+          id: q.id,
+          question: q.question,
+          score,
+          errorsCount,
+          theme: q.theme,
+          chapter: q.chapter,
+          advice: q.advice
+        });
+
+        const scoreChip = document.getElementById(`score-${q.id}`);
+        const feedback = document.getElementById(`feedback-${q.id}`);
+        if (scoreChip) {
+          scoreChip.textContent = `${score.toFixed(1)} / 1`;
+          scoreChip.className = "chip-score " + (
+            score === 1 ? "full" :
+            score === 0.5 ? "almost" :
+            score === 0.2 ? "low" : "zero"
+          );
+        }
+        if (feedback) {
+          feedback.innerHTML = `
+            ${comment}<br/>
+            <span class="text-muted">Correction attendue : ${q.correct.join(", ")}</span>
+          `;
+        }
+      });
+
+      const percent = totalMax ? (100 * totalScore / totalMax) : 0;
+
+      // Sauvegarde historique
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      history.push({
+        user: user.name,
+        date: new Date().toISOString(),
+        matiere: meta.matiere,
+        chapitre: meta.mode === "chapitre" ? meta.chapitre : "Epreuve matière",
+        mode: meta.mode,
+        totalScore,
+        totalMax,
+        percent: Math.round(percent),
+        perQuestion
+      });
+      saveLocal(STORAGE_KEY_HISTORY, history);
+
+      renderResultCard(meta, totalScore, totalMax, percent, perQuestion, examCard);
+      renderHistory(user, historyCard);
+    }
+
+    function renderResultCard(meta, totalScore, totalMax, percent, perQuestion, examCard) {
+      let existing = document.getElementById("result-card");
+      if (!existing) {
+        existing = document.createElement("div");
+        existing.id = "result-card";
+        existing.className = "card mt-16";
+        examCard.parentNode.insertBefore(existing, examCard.nextSibling);
+      }
+
+      const toReview = perQuestion.filter(q => q.score < 1);
+      const themes = new Map();
+      toReview.forEach(q => {
+        if (!themes.has(q.theme)) {
+          themes.set(q.theme, q.advice || q.theme);
+        }
+      });
+
+      let adviceHtml = "";
+      if (toReview.length === 0) {
+        adviceHtml = `<p class="text-muted">Rien de particulier à revoir sur cette épreuve, c’est propre 👌</p>`;
+      } else {
+        adviceHtml = `<ul class="advice-list">`;
+        themes.forEach((text, theme) => {
+          adviceHtml += `<li><strong>${theme} :</strong> ${text}</li>`;
+        });
+        adviceHtml += `</ul>`;
+      }
+
+      existing.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Résultats – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
+            <div class="text-muted">
+              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"}
+            </div>
+          </div>
+          <div class="result-main">
+            ${totalScore.toFixed(1)} / ${totalMax} (${percent.toFixed(0)}%)
+          </div>
+        </div>
+        <div class="mt-8">
+          <div class="progress-bar">
+            <div class="progress-bar-inner" style="width:${percent}%;"></div>
+          </div>
+        </div>
+        <div class="mt-12">
+          <div class="text-muted">Conseils de révision ciblée :</div>
+          ${adviceHtml}
+        </div>
+      `;
+    }
+
+    /**********************
+     * HISTORIQUE
+     *********************/
+
+    function renderHistory(user, historyCard) {
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const userHistory = history.filter(h => h.user === user.name);
+
+      historyCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Historique de tes épreuves</h2>
+            <div class="text-muted">Scores uniquement pour ${user.name}.</div>
+          </div>
+        </div>
+      `;
+
+      if (userHistory.length === 0) {
+        const p = document.createElement("p");
+        p.className = "text-muted mt-8";
+        p.textContent = "Aucune épreuve enregistrée pour l’instant.";
+        historyCard.appendChild(p);
+        return;
+      }
+
+      userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Matière</th>
+            <th>Chapitre / Mode</th>
+            <th>Score</th>
+            <th>%</th>
+            <th>Q à revoir</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${userHistory.map(h => {
+            const dateObj = new Date(h.date);
+            const labelDate = dateObj.toLocaleString("fr-FR", {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+            const toReview = h.perQuestion.filter(q => q.score < 1).length;
+            return `
+              <tr>
+                <td>${labelDate}</td>
+                <td>${h.matiere}</td>
+                <td>${h.chapitre}</td>
+                <td>${h.totalScore.toFixed(1)} / ${h.totalMax}</td>
+                <td>${h.percent}%</td>
+                <td>${toReview}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      `;
+      historyCard.appendChild(table);
+    }
+
+    // Lancement
+    render();
+  </script>
 </body>
 </html>
