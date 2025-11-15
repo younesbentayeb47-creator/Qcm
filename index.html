@@ -1179,3 +1179,609 @@
   </script>
 </body>
 </html>
+QCM_DATA["Virologie"] = QCM_DATA["Virologie"] || {};
+QCM_DATA["Virologie"]["HIV"] = [
+  {
+    identifiant:"hiv-q1",
+    question:"Q1. À propos de la primo-infection par le VIH :",
+    thème:"Primo-infection",
+    chapitre:"HIV",
+    options:{
+      "UN":"C’est une urgence thérapeutique.",
+      "B":"Elle peut se manifester par un syndrome mononucléosique.",
+      "C":"Elle s’accompagne d’une augmentation franche des CD4.",
+      "D":"Elle s’accompagne d’une augmentation immédiate des anticorps anti-VIH.",
+      "E":"Elle s’accompagne d’une charge virale très faible."
+    },
+    correct:["UN","B"],
+    conseil:"La primo-infection est souvent très contagieuse, avec charge virale élevée, tableau pseudo-grippal/mononucléosique, mais les anticorps ne sont pas encore bien formés."
+  },
+  {
+    identifiant:"hiv-q2",
+    question:"Q2. À propos du cycle du VIH-1 :",
+    thème:"Cycle viral",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il comporte une intégration du génome viral au génome cellulaire.",
+      "B":"Il comprend la synthèse de polyprotéines virales ensuite clivées.",
+      "C":"La phase de latence correspond à une absence complète de transcription virale.",
+      "D":"Il se déroule principalement dans les polynucléaires neutrophiles.",
+      "E":"Plusieurs étapes du cycle sont la cible d’antirétroviraux."
+    },
+    correct:["UN","B","E"],
+    conseil:"Le VIH s’intègre dans l’ADN cellulaire puis exprime des polyprotéines clivées. La réplication persiste même en phase dite «latente» et de nombreuses étapes sont ciblées par les ARV."
+  },
+  {
+    identifiant:"hiv-q3",
+    question:"Q3. À propos des quasi-espèces virales du VIH :",
+    thème:"Variabilité / quasi-espèces",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elles sont liées à l’absence de système de correction de la reverse transcriptase.",
+      "B":"Elles expliquent les résistances en cas de monothérapie.",
+      "C":"Elles correspondent à la présence simultanée de VIH-1 et VIH-2.",
+      "D":"Elles sont responsables d’un manque de spécificité des tests sérologiques.",
+      "E":"Elles traduisent l’existence de nombreuses mutations différentes au sein d’un même patient."
+    },
+    correct:["UN","B","E"],
+    conseil:"La RT est très infidèle → quasi-espèces → échappement immunitaire et résistances, surtout quand le traitement n’est pas suffisamment combiné et observé."
+  },
+  {
+    identifiant:"hiv-q4",
+    question:"Q4. Concernant l’histoire naturelle de l’infection VIH-1 :",
+    thème:"Histoire naturelle",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle peut rester asymptomatique pendant plusieurs années.",
+      "B":"La phase chronique correspond à une absence de réplication virale.",
+      "C":"Elle peut être à l’origine de certains cancers.",
+      "D":"Elle entraîne essentiellement une déplétion en lymphocytes T CD8+.",
+      "E":"La transmission digestive par l’eau potable est un mode de contamination fréquent."
+    },
+    correct:["UN","C"],
+    conseil:"L’infection VIH évolue sur des années, souvent silencieuse, mais la réplication est continue, avec déplétion en CD4 et risque d’infections opportunistes et de cancers."
+  },
+  {
+    identifiant:"hiv-q5",
+    question:"Q5. Quels examens relèvent du diagnostic direct de l’infection par le VIH-1 ?",
+    thème:"Diagnostic direct",
+    chapitre:"HIV",
+    options:{
+      "UN":"La recherche de l’ADN proviral par PCR.",
+      "B":"La mesure de la charge virale plasmatique par RT-PCR.",
+      "C":"Le Western Blot VIH.",
+      "D":"Le TROD VIH.",
+      "E":"La recherche d’antigène p24 soluble par ELISA."
+    },
+    correct:["UN","B","E"],
+    conseil:"Diagnostic direct = mise en évidence de composants viraux (ARN, ADN, Ag p24). Les tests sérologiques (ELISA, WB, TROD) sont du diagnostic indirect."
+  },
+  {
+    identifiant:"hiv-q6",
+    question:"Q6. À propos de la transmission mère-enfant du VIH :",
+    thème:"Transmission mère-enfant",
+    chapitre:"HIV",
+    options:{
+      "UN":"Sans mesure de prévention, le risque de transmission dépasse 80 %.",
+      "B":"Avec prévention optimale, le risque est inférieur à 1 % en France.",
+      "C":"La transmission est prévenue par la césarienne systématique chez toute femme VIH+.",
+      "D":"Le diagnostic d’infection du nouveau-né repose sur la sérologie VIH.",
+      "E":"Le diagnostic d’infection du nouveau-né repose sur la PCR virale."
+    },
+    correct:["B","E"],
+    conseil:"En France, la prévention (ARV maternels, modalités d’accouchement adaptées, prise en charge du nouveau-né) permet un risque de TME <1 %. Le diagnostic chez le nouveau-né repose sur la PCR, pas sur la sérologie."
+  },
+  {
+    identifiant:"hiv-q7",
+    question:"Q7. À propos de la primo-infection VIH :",
+    thème:"Primo-infection",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle s’accompagne dans >50 % des cas d’infections opportunistes.",
+      "B":"Elle se diagnostique classiquement par TROD seul.",
+      "C":"Elle s’accompagne d’une charge virale très élevée.",
+      "D":"Elle se diagnostique classiquement par Western Blot seul.",
+      "E":"Elle peut être totalement asymptomatique."
+    },
+    correct:["C","E"],
+    conseil:"Primo-infection = virémie très élevée, signes parfois aspécifiques voire absents. Les tests purement sérologiques peuvent encore être négatifs : penser ELISA combiné/charge virale."
+  },
+  {
+    identifiant:"hiv-q8",
+    question:"Q8. Concernant le traitement antirétroviral (ARV) :",
+    thème:"Traitement ARV",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il n’est jamais indiqué si la charge virale est < 5 000 copies/mL.",
+      "B":"Il n’est pas indiqué si les CD4 sont > 500/mm³.",
+      "C":"Il est contre-indiqué pendant les 6 premiers mois suivant la contamination.",
+      "D":"En primo-infection, sa mise en route est considérée comme une urgence.",
+      "E":"En infection chronique asymptomatique, il doit être débuté dès que possible."
+    },
+    correct:["D","E"],
+    conseil:"Les recommandations actuelles sont de traiter toute infection VIH, souvent très précocement, y compris primo-infection."
+  },
+  {
+    identifiant:"hiv-q9",
+    question:"Q9. À propos du dépistage du VIH :",
+    thème:"Dépistage",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il est légalement obligatoire chez toutes les femmes enceintes.",
+      "B":"Le test de dépistage de référence est un ELISA combiné Ag p24 + Ac anti-HIV-1/2.",
+      "C":"Un ELISA négatif doit toujours être contrôlé par PCR virale.",
+      "D":"Un test ELISA positif doit être confirmé par Western Blot.",
+      "E":"Chez le nouveau-né, le TROD suffit pour le diagnostic."
+    },
+    correct:["B","D"],
+    conseil:"Stratégie standard : ELISA combiné en 1re intention, puis confirmation par test de référence (Western Blot ou équivalent). La sérologie du nouveau-né n’est pas interprétable."
+  },
+  {
+    identifiant:"hiv-q10",
+    question:"Q10. Parmi les étiologies de syndrome mononucléosique, lesquelles doivent faire évoquer une infection VIH ?",
+    thème:"Primo-infection / syndromes mononucléosiques",
+    chapitre:"HIV",
+    options:{
+      "UN":"Varicelle-Zona (VZV).",
+      "B":"Cytomégalovirus (CMV).",
+      "C":"Parvovirus B19.",
+      "D":"VIH.",
+      "E":"Virus d’Epstein-Barr (EBV)."
+    },
+    correct:["B","D","E"],
+    conseil:"Devant un syndrome mononucléosique, penser systématiquement EBV, CMV… et VIH si contexte à risque."
+  },
+
+  /* -------------------- Q11 → Q40 : nouveaux QCM -------------------- */
+
+  {
+    identifiant:"hiv-q11",
+    question:"Q11. Concernant la structure du VIH-1 :",
+    thème:"Structure virale",
+    chapitre:"HIV",
+    options:{
+      "UN":"C’est un virus enveloppé.",
+      "B":"La capside p24 entoure deux molécules d’ARN génomique.",
+      "C":"Son génome est constitué d’un ADN bicaténaire.",
+      "D":"Les glycoprotéines gp120/gp41 sont codées par le gène env.",
+      "E":"Son organisation génomique comporte notamment des LTR, gag, pol et env."
+    },
+    correct:["UN","B","D","E"],
+    conseil:"Retenir : virus enveloppé, ARN simple brin diploïde, gènes gag/pol/env entourés de LTR."
+  },
+  {
+    identifiant:"hiv-q12",
+    question:"Q12. À propos des gènes de structure et de régulation du VIH :",
+    thème:"Génome viral",
+    chapitre:"HIV",
+    options:{
+      "UN":"Le gène gag code notamment la capside p24.",
+      "B":"Le gène pol code la reverse transcriptase, l’intégrase et la protéase.",
+      "C":"Le gène env code gp120 et gp41.",
+      "D":"Le gène nef code une protéine de capside.",
+      "E":"Le gène tat code une protéine régulatrice de la transcription virale."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"Gag = protéines de structure interne, Pol = enzymes, Env = enveloppe, Tat/Nef/Rev… = régulation/virulence."
+  },
+  {
+    identifiant:"hiv-q13",
+    question:"Q13. Concernant l’attachement et l’entrée du VIH :",
+    thème:"Entrée virale",
+    chapitre:"HIV",
+    options:{
+      "UN":"L’attachement initial implique l’interaction gp120–CD4.",
+      "B":"Les co-récepteurs principaux sont CCR5 et CXCR4.",
+      "C":"gp41 contient le peptide de fusion.",
+      "D":"Les souches R5 utilisent préférentiellement le co-récepteur CXCR4.",
+      "E":"Certaines souches peuvent utiliser à la fois CCR5 et CXCR4."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"R5 → CCR5 (souche macrophage-trope), X4 → CXCR4 (lymphotrope), R5X4 utilisent les deux."
+  },
+  {
+    identifiant:"hiv-q14",
+    question:"Q14. À propos de la reverse transcription du VIH :",
+    thème:"Reverse transcriptase",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle a lieu essentiellement dans le noyau de la cellule cible.",
+      "B":"Elle est réalisée par une ADN polymérase cellulaire.",
+      "C":"Elle conduit à la synthèse d’un ADN double brin à partir de l’ARN viral.",
+      "D":"Elle nécessite une activité RNAse H.",
+      "E":"Son infidélité contribue à la formation de quasi-espèces virales."
+    },
+    correct:["C","D","E"],
+    conseil:"La RT est virale (pol), fonctionne dans le cytoplasme, possède une activité RNAse H et est très infidèle → variabilité."
+  },
+  {
+    identifiant:"hiv-q15",
+    question:"Q15. Intégration et expression du provirus VIH :",
+    thème:"Intégration / expression",
+    chapitre:"HIV",
+    options:{
+      "UN":"L’intégrase coupe l’ADN cellulaire pour y insérer l’ADN proviral.",
+      "B":"L’ADN proviral intégré est transcrit par l’ARN polymérase II cellulaire.",
+      "C":"L’intégration est réversible en cas de traitement antirétroviral efficace.",
+      "D":"L’épissage des transcrits viraux permet de produire des ARNm régulateurs (tat, nef…).",
+      "E":"Seules les cellules CD8+ sont concernées par l’intégration."
+    },
+    correct:["UN","B","D"],
+    conseil:"Une fois intégré, le provirus se comporte comme un gène cellulaire, non réversible, base du caractère chronique de l’infection."
+  },
+  {
+    identifiant:"hiv-q16",
+    question:"Q16. Cellules cibles et réservoirs du VIH :",
+    thème:"Cellules cibles / réservoirs",
+    chapitre:"HIV",
+    options:{
+      "UN":"Les lymphocytes T CD4+ sont des cellules cibles majeures.",
+      "B":"Les macrophages et cellules dendritiques peuvent héberger le virus.",
+      "C":"Les lymphocytes B sont le principal réservoir viral.",
+      "D":"Les lymphocytes T CD4+ mémoires constituent un réservoir.",
+      "E":"Les hépatocytes sont le réservoir habituel du VIH."
+    },
+    correct:["UN","B","D"],
+    conseil:"Réservoirs principaux : LT CD4+ mémoires, macrophages, cellules dendritiques. Les B et hépatocytes ne sont pas des réservoirs classiques."
+  },
+  {
+    identifiant:"hiv-q17",
+    question:"Q17. À propos de la variabilité génétique du VIH :",
+    thème:"Variabilité génétique",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle est liée à l’absence de système de correction de la RT.",
+      "B":"Elle favorise l’échappement à la réponse immunitaire.",
+      "C":"Elle n’a aucun lien avec les résistances aux antirétroviraux.",
+      "D":"Elle est entretenue par la pression thérapeutique.",
+      "E":"Elle est à l’origine de la notion de quasi-espèces virales."
+    },
+    correct:["UN","B","D","E"],
+    conseil:"Variabilité = immuno-évasion + résistances → nécessité d’une trithérapie et d’une bonne observance."
+  },
+  {
+    identifiant:"hiv-q18",
+    question:"Q18. Phases de l’infection par le VIH :",
+    thème:"Histoire naturelle",
+    chapitre:"HIV",
+    options:{
+      "UN":"La primo-infection s’accompagne d’une virémie massive.",
+      "B":"La phase chronique est souvent cliniquement silencieuse.",
+      "C":"Durant la phase chronique, il n’y a plus de réplication virale.",
+      "D":"Le stade SIDA correspond à la phase finale, avec risques d’infections opportunistes et de cancers.",
+      "E":"Il existe une phase de latence virologique complète entre primo-infection et SIDA."
+    },
+    correct:["UN","B","D"],
+    conseil:"Il n’y a pas de vraie latence virologique : le virus se réplique en permanence, même si la clinique est silencieuse."
+  },
+  {
+    identifiant:"hiv-q19",
+    question:"Q19. Modes de transmission du VIH :",
+    thème:"Transmission",
+    chapitre:"HIV",
+    options:{
+      "UN":"Rapports sexuels non protégés.",
+      "B":"Partage de matériel d’injection.",
+      "C":"Transmission mère-enfant.",
+      "D":"Transmission aérienne par gouttelettes respiratoires.",
+      "E":"Transmission par consommation d’eau potable contaminée."
+    },
+    correct:["UN","B","C"],
+    conseil:"Transmission = sexuelle, sanguine, materno-fœtale. Pas de transmission respiratoire ni orale par l’eau."
+  },
+  {
+    identifiant:"hiv-q20",
+    question:"Q20. Caractéristiques de la primo-infection VIH :",
+    thème:"Primo-infection",
+    chapitre:"HIV",
+    options:{
+      "UN":"Peut être totalement asymptomatique.",
+      "B":"Peut se manifester par un syndrome pseudo-grippal ou mononucléosique.",
+      "C":"S’accompagne d’une charge virale élevée.",
+      "D":"S’accompagne d’une séroconversion immédiate avec Ac très élevés.",
+      "E":"Correspond à une période de contagiosité importante."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"Période clé : symptômes peu spécifiques, très contagieuse, charge virale très haute, sérologie parfois encore négative."
+  },
+  {
+    identifiant:"hiv-q21",
+    question:"Q21. Distinction diagnostic direct / indirect du VIH :",
+    thème:"Diagnostic",
+    chapitre:"HIV",
+    options:{
+      "UN":"La charge virale plasmatique est un diagnostic direct.",
+      "B":"La détection de p24 soluble est un diagnostic direct.",
+      "C":"La recherche d’anticorps anti-VIH est un diagnostic indirect.",
+      "D":"Le test ELISA combiné associe diagnostic direct et indirect.",
+      "E":"Le Western Blot VIH est un diagnostic direct."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"Direct = virus ou antigène ; indirect = anticorps. L’ELISA combiné associe Ag p24 + Ac."
+  },
+  {
+    identifiant:"hiv-q22",
+    question:"Q22. Cinétique des marqueurs de l’infection VIH :",
+    thème:"Cinétique marqueurs",
+    chapitre:"HIV",
+    options:{
+      "UN":"L’ARN viral plasmatique est détectable en premier.",
+      "B":"L’antigène p24 apparaît avant la séroconversion.",
+      "C":"Les anticorps sont présents dès les premiers jours après le contage.",
+      "D":"Le test ELISA combiné permet de réduire la fenêtre sérologique.",
+      "E":"Le TROD a une fenêtre sérologique plus courte que l’ELISA combiné."
+    },
+    correct:["UN","B","D"],
+    conseil:"Ordre : ARN → p24 → Ac. L’ELISA combiné réduit la fenêtre, le TROD, purement sérologique, est plus tardif."
+  },
+  {
+    identifiant:"hiv-q23",
+    question:"Q23. À propos des tests ELISA et TROD dans le VIH :",
+    thème:"Dépistage",
+    chapitre:"HIV",
+    options:{
+      "UN":"L’ELISA combiné recherche Ag p24 et Ac anti-HIV-1/2.",
+      "B":"Le TROD recherche uniquement les anticorps.",
+      "C":"Le TROD est le test de choix pour dépister la primo-infection très précoce.",
+      "D":"Un ELISA combiné négatif élimine définitivement l’infection quel que soit le délai.",
+      "E":"Le TROD peut être utilisé dans des actions de dépistage communautaire."
+    },
+    correct:["UN","B","E"],
+    conseil:"TROD = outil pratique de dépistage mais purement sérologique et moins sensible en primo-infection."
+  },
+  {
+    identifiant:"hiv-q24",
+    question:"Q24. Western Blot VIH :",
+    thème:"Confirmation sérologique",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il confirme la spécificité d’un ELISA positif.",
+      "B":"C’est un test de dépistage de première intention.",
+      "C":"Il nécessite la présence de plusieurs bandes spécifiques pour être interprétable.",
+      "D":"Il est peu spécifique.",
+      "E":"Il peut être non contributif en primo-infection trop précoce."
+    },
+    correct:["UN","C","E"],
+    conseil:"Le Western Blot est un test de confirmation, pas de dépistage. Il peut être indéterminé si effectué trop tôt."
+  },
+  {
+    identifiant:"hiv-q25",
+    question:"Q25. À propos de la charge virale VIH :",
+    thème:"Charge virale",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle se mesure par RT-PCR temps réel.",
+      "B":"Elle est détectable dès ~10 jours après la contamination.",
+      "C":"Une charge virale < 50 copies/mL est dite indétectable.",
+      "D":"Elle permet de suivre l’efficacité du traitement.",
+      "E":"Elle suffit à elle seule pour poser un diagnostic de VIH lors d’un dépistage de masse."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"La charge virale est un outil de suivi et de diagnostic précoce, mais la stratégie de dépistage repose sur la sérologie + confirmation."
+  },
+  {
+    identifiant:"hiv-q26",
+    question:"Q26. Indications du traitement antirétroviral :",
+    thème:"Stratégie thérapeutique",
+    chapitre:"HIV",
+    options:{
+      "UN":"Actuellement, tout patient infecté par le VIH doit être traité.",
+      "B":"Le traitement doit idéalement être débuté précocement après le diagnostic.",
+      "C":"On attend systématiquement le stade SIDA pour débuter le traitement.",
+      "D":"L’un des objectifs est d’obtenir une CV indétectable et des CD4 élevés.",
+      "E":"Le traitement n’a aucun intérêt lorsque la charge virale initiale est faible."
+    },
+    correct:["UN","B","D"],
+    conseil:"Tendance actuelle = traitement universel, précoce, pour contrôler la réplication, restaurer l’immunité et réduire la transmission."
+  },
+  {
+    identifiant:"hiv-q27",
+    question:"Q27. Classes d’antirétroviraux dans le traitement du VIH :",
+    thème:"Classes d’ARV",
+    chapitre:"HIV",
+    options:{
+      "UN":"Inhibiteurs nucléosidiques de la reverse transcriptase (INTI).",
+      "B":"Inhibiteurs non nucléosidiques de la RT (INNTI).",
+      "C":"Inhibiteurs de protéase.",
+      "D":"Inhibiteurs d’intégrase.",
+      "E":"Bêta-lactamines."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"Les bêta-lactamines ne sont pas des ARV. Retenir : INTI, INNTI, IP, inhibiteurs d’intégrase, d’entrée/fusion…"
+  },
+  {
+    identifiant:"hiv-q28",
+    question:"Q28. Résistance et échappement virologique :",
+    thème:"Résistances",
+    chapitre:"HIV",
+    options:{
+      "UN":"Ils peuvent résulter d’une observance insuffisante.",
+      "B":"Ils peuvent être mis en évidence par un génotypage de résistance.",
+      "C":"Ils s’accompagnent souvent d’une remontée de la charge virale.",
+      "D":"Ils ne nécessitent jamais de modification du traitement.",
+      "E":"Ils sont favorisés par les monothérapies."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"L’échec virologique impose de vérifier l’observance et d’adapter le schéma en fonction des résistances."
+  },
+  {
+    identifiant:"hiv-q29",
+    question:"Q29. Prophylaxie post-exposition (PPE) au VIH :",
+    thème:"PPE",
+    chapitre:"HIV",
+    options:{
+      "UN":"C’est une urgence thérapeutique.",
+      "B":"Elle doit idéalement être débutée dans les 4–6 heures suivant l’exposition.",
+      "C":"Elle n’a plus jamais d’indication au-delà de 48 heures.",
+      "D":"Sa durée habituelle est de 28 jours.",
+      "E":"Elle repose sur l’association d’au moins deux antirétroviraux."
+    },
+    correct:["UN","B","D","E"],
+    conseil:"PPE = urgence : évaluer le risque, démarrer vite, schéma combiné, durée 28 jours, réévaluation en consultation spécialisée."
+  },
+  {
+    identifiant:"hiv-q30",
+    question:"Q30. Prise en charge d’une exposition sexuelle à risque vis-à-vis du VIH :",
+    thème:"PPE / situations à risque",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il faut rechercher le statut VIH de la source si possible.",
+      "B":"Une PPE est indiquée si la source est connue VIH+ à charge virale détectable.",
+      "C":"Un TROD chez la source peut aider à guider la décision.",
+      "D":"L’absence de PPE est systématique si le rapport date de plus de 24 heures.",
+      "E":"Le dépistage d’autres IST doit être proposé."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"On évalue le risque, on documente la source si possible, on propose PPE + dépistage IST si le risque est significatif."
+  },
+  {
+    identifiant:"hiv-q31",
+    question:"Q31. VIH et grossesse :",
+    thème:"VIH et grossesse",
+    chapitre:"HIV",
+    options:{
+      "UN":"La sérologie VIH est proposée systématiquement pendant la grossesse.",
+      "B":"La baisse de la charge virale maternelle réduit le risque de transmission mère-enfant.",
+      "C":"Sans prévention, le risque de transmission est autour de 20–25 %.",
+      "D":"Avec prévention optimale, la transmission peut être < 0,2–1 %.",
+      "E":"L’allaitement est toujours autorisé en France quel que soit le contexte."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"Prévention = dépistage, traitement maternel, modalités d’accouchement adaptées et prévention néonatale → TME quasi nulle."
+  },
+  {
+    identifiant:"hiv-q32",
+    question:"Q32. Facteurs augmentant le risque de transmission mère-enfant du VIH :",
+    thème:"Transmission mère-enfant",
+    chapitre:"HIV",
+    options:{
+      "UN":"Charge virale maternelle élevée.",
+      "B":"Absence de traitement antirétroviral pendant la grossesse.",
+      "C":"Rupture prolongée des membranes.",
+      "D":"Allaitement maternel.",
+      "E":"Césarienne programmée sous charge virale indétectable."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"Tous les facteurs qui augmentent la durée ou l’intensité de l’exposition du fœtus au virus majorent le risque de TME."
+  },
+  {
+    identifiant:"hiv-q33",
+    question:"Q33. Suivi thérapeutique des patients VIH :",
+    thème:"Suivi clinique / biologique",
+    chapitre:"HIV",
+    options:{
+      "UN":"Il repose sur la charge virale et le taux de CD4.",
+      "B":"Il comprend la surveillance des effets métaboliques et toxiques des ARV.",
+      "C":"Il nécessite un suivi rapproché au début du traitement.",
+      "D":"Il peut être interrompu dès que la charge virale est indétectable.",
+      "E":"Il vise à détecter précocement un échec virologique."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"Même en cas de CV indétectable, le suivi est continu (tolérance, observance, comorbidités, échec virologique)."
+  },
+  {
+    identifiant:"hiv-q34",
+    question:"Q34. Concept «Indétectable = Intransmissible» (U=U) :",
+    thème:"Prévention / U=U",
+    chapitre:"HIV",
+    options:{
+      "UN":"Une charge virale < 50 copies/mL est dite indétectable.",
+      "B":"Il traduit la disparition complète du VIH de l’organisme.",
+      "C":"Il signifie l’absence de transmission sexuelle lorsque l’observance est correcte.",
+      "D":"Il dispense de toute surveillance virologique.",
+      "E":"Il repose sur de grandes études cliniques."
+    },
+    correct:["UN","C","E"],
+    conseil:"U=U = message de santé publique fort, mais valable uniquement avec observance et suivi régulier."
+  },
+  {
+    identifiant:"hiv-q35",
+    question:"Q35. Syndrome mononucléosique et infection VIH :",
+    thème:"Primo-infection / diagnostic différentiel",
+    chapitre:"HIV",
+    options:{
+      "UN":"La primo-infection VIH peut mimer une mononucléose infectieuse à EBV.",
+      "B":"La NFS peut montrer des lymphocytes activés.",
+      "C":"La positivité d’EBV exclut formellement une co-infection VIH.",
+      "D":"Le tableau peut survenir 1 à 6 semaines après la contamination.",
+      "E":"Un dépistage VIH est indiqué en cas de contexte à risque."
+    },
+    correct:["UN","B","D","E"],
+    conseil:"Toujours penser VIH devant un syndrome mononucléosique atypique ou dans un contexte à risque."
+  },
+  {
+    identifiant:"hiv-q36",
+    question:"Q36. Conséquences des quasi-espèces virales du VIH :",
+    thème:"Variabilité / résistances",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elles expliquent l’échec des monothérapies.",
+      "B":"Elles justifient les associations d’antirétroviraux.",
+      "C":"Elles favorisent l’échappement virologique en cas de mauvaise observance.",
+      "D":"Elles n’ont aucune conséquence sur la charge virale.",
+      "E":"Elles peuvent guider l’adaptation du traitement via le génotypage des résistances."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"Variabilité = nécessité de trithérapies, bonne observance et adaptation au profil de résistance."
+  },
+  {
+    identifiant:"hiv-q37",
+    question:"Q37. Différences essentielles entre VIH-1 et VIH-2 :",
+    thème:"HIV-1 / HIV-2",
+    chapitre:"HIV",
+    options:{
+      "UN":"VIH-2 est globalement moins pathogène que VIH-1.",
+      "B":"VIH-2 est plus fréquent en Afrique de l’Ouest.",
+      "C":"Les techniques usuelles de charge virale ne sont pas toujours adaptées au VIH-2.",
+      "D":"VIH-2 n’est jamais transmis par voie sexuelle.",
+      "E":"Les recommandations thérapeutiques peuvent différer entre VIH-1 et VIH-2."
+    },
+    correct:["UN","B","C","E"],
+    conseil:"Toujours penser VIH-2 devant certains profils (origine géographique, CV basse…) et adapter la prise en charge."
+  },
+  {
+    identifiant:"hiv-q38",
+    question:"Q38. Suivi d’un nouveau-né de mère VIH positive :",
+    thème:"VIH du nouveau-né",
+    chapitre:"HIV",
+    options:{
+      "UN":"La sérologie VIH n’est pas interprétable à la naissance.",
+      "B":"On recherche l’ADN ou l’ARN viral par PCR.",
+      "C":"Un ELISA combiné négatif à J1 élimine l’infection.",
+      "D":"Une prophylaxie antirétrovirale peut être administrée au nouveau-né.",
+      "E":"Plusieurs PCR sont réalisées à distance pour confirmer l’absence d’infection."
+    },
+    correct:["UN","B","D","E"],
+    conseil:"Les Ac maternels traversent le placenta → sérologie non interprétable : on s’appuie sur des tests virologiques répétés."
+  },
+  {
+    identifiant:"hiv-q39",
+    question:"Q39. Prophylaxie pré-exposition (PrEP) au VIH :",
+    thème:"PrEP",
+    chapitre:"HIV",
+    options:{
+      "UN":"Elle repose sur la prise d’un antirétroviral chez des sujets non infectés mais à haut risque.",
+      "B":"Elle nécessite un dépistage VIH avant l’initiation.",
+      "C":"Elle supprime tout intérêt du préservatif dans toutes les situations.",
+      "D":"Elle nécessite un suivi régulier (VIH, IST, fonction rénale…).",
+      "E":"Elle est réservée aux patients déjà infectés par le VIH."
+    },
+    correct:["UN","B","D"],
+    conseil:"PrEP = prévention additionnelle, ne remplace ni le dépistage régulier ni la prévention des autres IST."
+  },
+  {
+    identifiant:"hiv-q40",
+    question:"Q40. Complications associées à l’infection VIH :",
+    thème:"Complications",
+    chapitre:"HIV",
+    options:{
+      "UN":"Infections opportunistes liées à l’immunodépression.",
+      "B":"Cancers (lymphomes, sarcome de Kaposi…).",
+      "C":"Atteintes neurocognitives liées au VIH.",
+      "D":"Complications métaboliques parfois liées aux traitements.",
+      "E":"Myocardite aiguë obligatoire au cours de l’infection VIH."
+    },
+    correct:["UN","B","C","D"],
+    conseil:"Penser global : risque infectieux, tumoral, neurologique et métabolique, à la fois lié au virus et aux ARV."
+  }
+];
