@@ -213,14 +213,6 @@
       font-size: 13px;
     }
     .advice-list li { margin-bottom: 4px; }
-    .toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .toggle input { cursor: pointer; }
     .mode-pill {
       padding: 4px 10px;
       border-radius: 999px;
@@ -246,9 +238,672 @@
 
   <script>
     /**********************
-     * DONNÉES QCM
+     * STOCKAGE LOCAL
      *********************/
+    const STORAGE_KEY_USER = "qcm_multi_user_v1";
+    const STORAGE_KEY_HISTORY = "qcm_history_v1";
 
+    function saveLocal(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    function loadLocal(key, defaultValue) {
+      const raw = localStorage.getItem(key);
+      if (!raw) return defaultValue;
+      try { return JSON.parse(raw); } catch { return defaultValue; }
+    }
+
+    const app = document.getElementById("app");
+
+    /**********************
+     * RANGS / CLASSEMENT
+     *********************/
+    function getRankLabel(percent) {
+      if (percent >= 98) return "Élite Global";
+      if (percent >= 95) return "Grand Champion";
+      if (percent >= 90) return "Champion";
+      if (percent >= 80) return "Platine";
+      if (percent >= 70) return "Cristal";
+      if (percent >= 60) return "Or";
+      if (percent >= 45) return "Bronze";
+      return "Fer";
+    }
+
+    function computeGlobalStats(history) {
+      const perUser = new Map();
+      history.forEach(h => {
+        if (!perUser.has(h.user)) {
+          perUser.set(h.user, { sum: 0, n: 0 });
+        }
+        const obj = perUser.get(h.user);
+        obj.sum += h.percent;
+        obj.n += 1;
+      });
+      const arr = [];
+      perUser.forEach((v, user) => {
+        const avg = v.n ? v.sum / v.n : 0;
+        arr.push({
+          user,
+          avg,
+          rank: getRankLabel(avg)
+        });
+      });
+      arr.sort((a, b) => b.avg - a.avg);
+      return arr;
+    }
+
+    /**********************
+     * LOGIN
+     *********************/
+    function renderLogin() {
+      app.innerHTML = "";
+      const container = document.createElement("div");
+      container.className = "login-container card";
+
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const userSet = new Set(history.map(h => h.user));
+      const userList = Array.from(userSet);
+
+      let lastUser = null;
+      if (history.length > 0) lastUser = history[history.length - 1].user;
+
+      container.innerHTML = `
+        <div class="login-title">QCM Médicaux – Epreuves</div>
+        <div class="login-sub">
+          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
+          Multi-utilisateurs : chacun garde ses scores.
+        </div>
+        <div class="mt-16">
+          <label for="login-name">Nom / Pseudo</label>
+          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
+        </div>
+        ${userList.length ? `
+        <div class="mt-12">
+          <div class="text-muted">Utilisateurs récents :</div>
+          <div class="mt-4 flex">
+            ${userList.map(u => `
+              <button type="button" class="secondary" data-user="${u}">
+                ${u === lastUser ? "⭐ " : ""}${u}
+              </button>
+            `).join("")}
+          </div>
+        </div>` : ""}
+        <div class="mt-16">
+          <button id="login-btn"><span>Entrer</span></button>
+        </div>
+      `;
+
+      app.appendChild(container);
+
+      const input = container.querySelector("#login-name");
+      const btn = container.querySelector("#login-btn");
+      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
+
+      btn.addEventListener("click", () => {
+        const name = (input.value || "").trim();
+        if (!name) {
+          alert("Entre au moins un prénom ou un pseudo 🙂");
+          return;
+        }
+        saveLocal(STORAGE_KEY_USER, { name });
+        render();
+      });
+
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") btn.click();
+      });
+
+      existingBtns.forEach(b => {
+        b.addEventListener("click", () => {
+          const user = b.getAttribute("data-user");
+          saveLocal(STORAGE_KEY_USER, { name: user });
+          render();
+        });
+      });
+    }
+
+    /**********************
+     * NOTE PAR QUESTION (BARÈME)
+     *********************/
+    // 0 faute -> 1
+    // 1 faute -> 0.5
+    // 2 fautes -> 0.2
+    // ≥3 fautes -> 0
+    function gradeQuestion(question, selected) {
+      const correct = question.correct;
+      const correctSet = new Set(correct);
+      const selectedSet = new Set(selected);
+
+      let errors = 0;
+
+      selectedSet.forEach(letter => {
+        if (!correctSet.has(letter)) errors++;
+      });
+      correctSet.forEach(letter => {
+        if (!selectedSet.has(letter)) errors++;
+      });
+
+      let score = 0;
+      if (errors === 0) score = 1;
+      else if (errors === 1) score = 0.5;
+      else if (errors === 2) score = 0.2;
+      else score = 0;
+
+      let comment = "";
+      if (errors === 0) comment = "✅ Parfait, aucune erreur sur cette question.";
+      else if (errors === 1) comment = "🟡 Une seule erreur : presque parfait, mais à revoir rapidement.";
+      else if (errors === 2) comment = "🟠 Deux erreurs : notion fragile, à retravailler.";
+      else comment = "🔴 Trois erreurs ou plus : revoir le cours sur ce point.";
+
+      return { score, errorsCount: errors, comment };
+    }
+
+    function pickRandomQuestions(pool, n) {
+      const arr = [...pool];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.slice(0, Math.min(n, arr.length));
+    }
+
+    /**********************
+     * VUE PRINCIPALE
+     *********************/
+    function renderMain(user) {
+      app.innerHTML = "";
+
+      const headerCard = document.createElement("div");
+      headerCard.className = "card";
+      headerCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h1>Bonjour, ${user.name} 👋</h1>
+            <div class="text-muted">
+              Mode épreuve (20 QCM) avec dossiers par matière et chapitres. Scores séparés par utilisateur.
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">Bêta exam-style</span>
+            <button class="secondary" id="logout-btn">Changer d’utilisateur</button>
+          </div>
+        </div>
+      `;
+      app.appendChild(headerCard);
+      headerCard.querySelector("#logout-btn").addEventListener("click", () => {
+        saveLocal(STORAGE_KEY_USER, null);
+        render();
+      });
+
+      const selectorCard = document.createElement("div");
+      selectorCard.className = "card";
+
+      const matieres = Object.keys(QCM_DATA);
+      const defaultMatiere = matieres[0];
+      const chapitres = Object.keys(QCM_DATA[defaultMatiere]);
+
+      selectorCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Paramètres de l’épreuve</h2>
+            <div class="text-muted">
+              Choisis la matière, le chapitre ou une épreuve mélangeant les chapitres d’une même matière.
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">Mode EDN</span>
+          </div>
+        </div>
+        <div class="mt-8">
+          <label for="select-matiere">Matière</label>
+          <select id="select-matiere"></select>
+        </div>
+        <div class="mt-8">
+          <label for="select-chapitre">Chapitre</label>
+          <select id="select-chapitre"></select>
+        </div>
+        <div class="mt-8 flex">
+          <div id="mode-chapitre" class="mode-pill active" data-mode="chapitre">Mode chapitre (20 QCM du chapitre)</div>
+          <div id="mode-matiere" class="mode-pill" data-mode="matiere">Mode épreuve matière (chapitres mélangés)</div>
+        </div>
+        <div class="mt-12 flex space-between">
+          <div style="flex:1; max-width: 180px;">
+            <label for="nb-qcm">Nombre de QCM</label>
+            <input type="number" id="nb-qcm" min="1" max="50" value="20" />
+          </div>
+          <div class="mt-8">
+            <span class="pill" id="infos-qcm"></span>
+          </div>
+        </div>
+        <div class="mt-16 flex space-between">
+          <button id="btn-start">Lancer l’épreuve</button>
+          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores</button>
+        </div>
+      `;
+      app.appendChild(selectorCard);
+
+      const selectMatiere = selectorCard.querySelector("#select-matiere");
+      const selectChapitre = selectorCard.querySelector("#select-chapitre");
+      const modeChapitrePill = selectorCard.querySelector("#mode-chapitre");
+      const modeMatierePill = selectorCard.querySelector("#mode-matiere");
+      const nbQcmInput = selectorCard.querySelector("#nb-qcm");
+      const infosQcmSpan = selectorCard.querySelector("#infos-qcm");
+      const btnStart = selectorCard.querySelector("#btn-start");
+      const btnClearUser = selectorCard.querySelector("#btn-clear-user");
+
+      matieres.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        selectMatiere.appendChild(opt);
+      });
+      selectMatiere.value = defaultMatiere;
+
+      function updateChapitres() {
+        selectChapitre.innerHTML = "";
+        const matiere = selectMatiere.value;
+        const chapList = Object.keys(QCM_DATA[matiere]);
+        chapList.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          selectChapitre.appendChild(opt);
+        });
+        selectChapitre.value = chapList[0];
+      }
+
+      updateChapitres();
+
+      let currentMode = "chapitre";
+
+      function updateMode(mode) {
+        currentMode = mode;
+        if (mode === "chapitre") {
+          modeChapitrePill.classList.add("active");
+          modeMatierePill.classList.remove("active");
+        } else {
+          modeChapitrePill.classList.remove("active");
+          modeMatierePill.classList.add("active");
+        }
+        updateInfoQcm();
+      }
+
+      function getAvailableQuestions() {
+        const matiere = selectMatiere.value;
+        const chapitre = selectChapitre.value;
+        if (currentMode === "chapitre") {
+          return QCM_DATA[matiere][chapitre] || [];
+        } else {
+          const all = [];
+          const chapMap = QCM_DATA[matiere];
+          Object.keys(chapMap).forEach(ch => {
+            all.push(...chapMap[ch]);
+          });
+          return all;
+        }
+      }
+
+      function updateInfoQcm() {
+        const questions = getAvailableQuestions();
+        const n = questions.length;
+        const bar = "Barème : 0 faute = 1 ; 1 faute = 0,5 ; 2 fautes = 0,2 ; ≥3 fautes = 0";
+        infosQcmSpan.textContent = `${n} QCM dispo · ${bar}`;
+      }
+
+      modeChapitrePill.addEventListener("click", () => updateMode("chapitre"));
+      modeMatierePill.addEventListener("click", () => updateMode("matiere"));
+
+      selectMatiere.addEventListener("change", () => {
+        updateChapitres();
+        updateInfoQcm();
+      });
+      selectChapitre.addEventListener("change", updateInfoQcm);
+      nbQcmInput.addEventListener("change", () => {
+        const v = parseInt(nbQcmInput.value || "20", 10);
+        if (v < 1) nbQcmInput.value = 1;
+      });
+
+      btnClearUser.addEventListener("click", () => {
+        if (!confirm("Effacer tout ton historique pour ce compte ?")) return;
+        const history = loadLocal(STORAGE_KEY_HISTORY, []);
+        const filtered = history.filter(h => h.user !== user.name);
+        saveLocal(STORAGE_KEY_HISTORY, filtered);
+        alert("Historique effacé pour " + user.name);
+        render();
+      });
+
+      const examCard = document.createElement("div");
+      examCard.className = "card";
+      examCard.id = "exam-card";
+      app.appendChild(examCard);
+
+      const historyCard = document.createElement("div");
+      historyCard.className = "card";
+      historyCard.id = "history-card";
+      app.appendChild(historyCard);
+
+      btnStart.addEventListener("click", () => {
+        const questionsPool = getAvailableQuestions();
+        if (!questionsPool.length) {
+          alert("Pas encore de QCM dans ce dossier (matière/chapitre).");
+          return;
+        }
+        const nRequested = parseInt(nbQcmInput.value || "20", 10);
+        const questions = pickRandomQuestions(questionsPool, nRequested);
+        renderExam(user, questions, {
+          matiere: selectMatiere.value,
+          chapitre: selectChapitre.value,
+          mode: currentMode
+        }, examCard, historyCard);
+      });
+
+      updateInfoQcm();
+      renderHistory(user, historyCard);
+    }
+
+    /**********************
+     * EPREUVE
+     *********************/
+    function renderExam(user, questions, meta, examCard, historyCard) {
+      examCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Epreuve – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
+            <div class="text-muted">
+              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"} · ${questions.length} QCM
+            </div>
+          </div>
+          <div class="flex">
+            <span class="badge">En cours</span>
+          </div>
+        </div>
+      `;
+
+      const form = document.createElement("div");
+      form.id = "exam-form";
+
+      questions.forEach((q, index) => {
+        const qDiv = document.createElement("div");
+        qDiv.className = "qcm-question";
+        qDiv.dataset.qid = q.id;
+
+        let optionsHtml = "";
+        for (const [letter, text] of Object.entries(q.options)) {
+          optionsHtml += `
+            <label>
+              <input type="checkbox" name="${q.id}" value="${letter}" />
+              <span><strong>${letter}.</strong> ${text}</span>
+            </label>
+          `;
+        }
+
+        qDiv.innerHTML = `
+          <div class="flex space-between">
+            <div class="qcm-title">${index + 1}. ${q.question}</div>
+            <div class="chip-score" id="score-${q.id}">– / 1</div>
+          </div>
+          <div class="text-muted">Matière : ${meta.matiere} · Chapitre : ${q.chapter || meta.chapitre} · Thème : ${q.theme}</div>
+          <div class="qcm-options mt-8">
+            ${optionsHtml}
+          </div>
+          <div class="text-muted mt-8" id="feedback-${q.id}"></div>
+        `;
+        form.appendChild(qDiv);
+      });
+
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "mt-16 flex space-between";
+      actionsDiv.innerHTML = `
+        <button id="btn-corriger">Corriger l’épreuve</button>
+        <button class="secondary" id="btn-reset">Effacer toutes les réponses</button>
+      `;
+
+      examCard.appendChild(form);
+      examCard.appendChild(actionsDiv);
+
+      const btnCorriger = examCard.querySelector("#btn-corriger");
+      const btnReset = examCard.querySelector("#btn-reset");
+
+      btnCorriger.addEventListener("click", () => {
+        corrigerEpreuve(user, questions, meta, examCard, historyCard);
+      });
+
+      btnReset.addEventListener("click", () => {
+        const checkboxes = examCard.querySelectorAll("input[type='checkbox']");
+        checkboxes.forEach(cb => cb.checked = false);
+        questions.forEach(q => {
+          const scoreChip = document.getElementById(`score-${q.id}`);
+          const feedback = document.getElementById(`feedback-${q.id}`);
+          if (scoreChip) {
+            scoreChip.textContent = "– / 1";
+            scoreChip.className = "chip-score";
+          }
+          if (feedback) feedback.textContent = "";
+        });
+      });
+    }
+
+    function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
+      let totalScore = 0;
+      const totalMax = questions.length;
+      const perQuestion = [];
+
+      questions.forEach(q => {
+        const checkboxes = examCard.querySelectorAll(`input[name='${q.id}']:checked`);
+        const selected = Array.from(checkboxes).map(cb => cb.value);
+        const { score, errorsCount, comment } = gradeQuestion(q, selected);
+
+        totalScore += score;
+        perQuestion.push({
+          id: q.id,
+          question: q.question,
+          score,
+          errorsCount,
+          theme: q.theme,
+          chapter: q.chapter,
+          advice: q.advice
+        });
+
+        const scoreChip = document.getElementById(`score-${q.id}`);
+        const feedback = document.getElementById(`feedback-${q.id}`);
+        if (scoreChip) {
+          scoreChip.textContent = `${score.toFixed(1)} / 1`;
+          scoreChip.className = "chip-score " + (
+            score === 1 ? "full" :
+            score === 0.5 ? "almost" :
+            score === 0.2 ? "low" : "zero"
+          );
+        }
+        if (feedback) {
+          feedback.innerHTML = `
+            ${comment}<br/>
+            <span class="text-muted">Correction attendue : ${q.correct.join(", ")}</span>
+          `;
+        }
+      });
+
+      const percent = totalMax ? (100 * totalScore / totalMax) : 0;
+
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      history.push({
+        user: user.name,
+        date: new Date().toISOString(),
+        matiere: meta.matiere,
+        chapitre: meta.mode === "chapitre" ? meta.chapitre : "Epreuve matière",
+        mode: meta.mode,
+        totalScore,
+        totalMax,
+        percent: Math.round(percent),
+        perQuestion
+      });
+      saveLocal(STORAGE_KEY_HISTORY, history);
+
+      renderResultCard(user, meta, totalScore, totalMax, percent, perQuestion, examCard);
+      renderHistory(user, historyCard);
+    }
+
+    function renderResultCard(user, meta, totalScore, totalMax, percent, perQuestion, examCard) {
+      let existing = document.getElementById("result-card");
+      if (!existing) {
+        existing = document.createElement("div");
+        existing.id = "result-card";
+        existing.className = "card mt-16";
+        examCard.parentNode.insertBefore(existing, examCard.nextSibling);
+      }
+
+      const toReview = perQuestion.filter(q => q.score < 1);
+      const themes = new Map();
+      toReview.forEach(q => {
+        if (!themes.has(q.theme)) {
+          themes.set(q.theme, q.advice || q.theme);
+        }
+      });
+
+      let adviceHtml = "";
+      if (toReview.length === 0) {
+        adviceHtml = `<p class="text-muted">Rien de particulier à revoir sur cette épreuve, c’est propre 👌</p>`;
+      } else {
+        adviceHtml = `<ul class="advice-list">`;
+        themes.forEach((text, theme) => {
+          adviceHtml += `<li><strong>${theme} :</strong> ${text}</li>`;
+        });
+        adviceHtml += `</ul>`;
+      }
+
+      // Rang de l’utilisateur dans cette matière (moyenne de toutes ses épreuves de la matière)
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const sameMatiere = history.filter(
+        h => h.user === user.name && h.matiere === meta.matiere
+      );
+      let avgMatiere = percent;
+      if (sameMatiere.length > 0) {
+        const sum = sameMatiere.reduce((acc, h) => acc + h.percent, 0);
+        avgMatiere = sum / sameMatiere.length;
+      }
+      const rankLabel = getRankLabel(avgMatiere);
+
+      existing.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Résultats – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
+            <div class="text-muted">
+              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"}
+            </div>
+          </div>
+          <div class="result-main">
+            ${totalScore.toFixed(1)} / ${totalMax} (${percent.toFixed(0)}%)
+          </div>
+        </div>
+        <div class="mt-8">
+          <div class="progress-bar">
+            <div class="progress-bar-inner" style="width:${percent}%;"></div>
+          </div>
+        </div>
+        <div class="mt-12">
+          <div class="text-muted">Ton rang dans ${meta.matiere} (moyenne de tes épreuves) :</div>
+          <p><strong>${rankLabel}</strong> · Moyenne ${avgMatiere.toFixed(0)}%</p>
+        </div>
+        <div class="mt-12">
+          <div class="text-muted">Conseils de révision ciblée :</div>
+          ${adviceHtml}
+        </div>
+      `;
+    }
+
+    /**********************
+     * HISTORIQUE + CLASSEMENT
+     *********************/
+    function renderHistory(user, historyCard) {
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const userHistory = history.filter(h => h.user === user.name);
+
+      historyCard.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h2>Historique et classement</h2>
+            <div class="text-muted">Scores pour ${user.name} + comparatif entre utilisateurs (même appareil).</div>
+          </div>
+        </div>
+      `;
+
+      if (userHistory.length === 0) {
+        const p = document.createElement("p");
+        p.className = "text-muted mt-8";
+        p.textContent = "Aucune épreuve enregistrée pour l’instant.";
+        historyCard.appendChild(p);
+      } else {
+        userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Matière</th>
+              <th>Chapitre / Mode</th>
+              <th>Score</th>
+              <th>%</th>
+              <th>Q à revoir</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${userHistory.map(h => {
+              const dateObj = new Date(h.date);
+              const labelDate = dateObj.toLocaleString("fr-FR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+              });
+              const toReview = h.perQuestion.filter(q => q.score < 1).length;
+              return `
+                <tr>
+                  <td>${labelDate}</td>
+                  <td>${h.matiere}</td>
+                  <td>${h.chapitre}</td>
+                  <td>${h.totalScore.toFixed(1)} / ${h.totalMax}</td>
+                  <td>${h.percent}%</td>
+                  <td>${toReview}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        `;
+        historyCard.appendChild(table);
+      }
+
+      // Tableau de classement global
+      if (history.length > 0) {
+        const stats = computeGlobalStats(history);
+        const rankTable = document.createElement("table");
+        rankTable.className = "mt-16";
+        rankTable.innerHTML = `
+          <thead>
+            <tr>
+              <th>Classement</th>
+              <th>Utilisateur</th>
+              <th>Moyenne globale</th>
+              <th>Niveau</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stats.map((s, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${s.user}</td>
+                <td>${s.avg.toFixed(0)}%</td>
+                <td>${s.rank}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+        historyCard.appendChild(rankTable);
+      }
+    }
+
+    /**********************
+     * DONNÉES QCM – TU AJOUTES / MODIFIES ICI
+     * (scrolle tout en bas pour ajouter de nouveaux QCM)
+     *********************/
     const QCM_DATA = {
       "Parasitologie": {
         "Paludisme": [
@@ -1028,23 +1683,8 @@
     };
 
     /**********************
-     * STOCKAGE LOCAL
+     * LANCEMENT
      *********************/
-
-    const STORAGE_KEY_USER = "qcm_multi_user_v1";
-    const STORAGE_KEY_HISTORY = "qcm_history_v1";
-
-    function saveLocal(key, value) {
-      localStorage.setItem(key, JSON.stringify(value));
-    }
-    function loadLocal(key, defaultValue) {
-      const raw = localStorage.getItem(key);
-      if (!raw) return defaultValue;
-      try { return JSON.parse(raw); } catch { return defaultValue; }
-    }
-
-    const app = document.getElementById("app");
-
     function render() {
       const currentUser = loadLocal(STORAGE_KEY_USER, null);
       if (!currentUser) {
@@ -1052,562 +1692,6 @@
       } else {
         renderMain(currentUser);
       }
-    }
-
-    /**********************
-     * LOGIN
-     *********************/
-
-    function renderLogin() {
-      app.innerHTML = "";
-      const container = document.createElement("div");
-      container.className = "login-container card";
-
-      const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      const userSet = new Set(history.map(h => h.user));
-      const userList = Array.from(userSet);
-
-      let lastUser = null;
-      if (history.length > 0) lastUser = history[history.length - 1].user;
-
-      container.innerHTML = `
-        <div class="login-title">QCM Médicaux – Epreuves</div>
-        <div class="login-sub">
-          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
-          Multi-utilisateurs : chacun garde ses scores.
-        </div>
-        <div class="mt-16">
-          <label for="login-name">Nom / Pseudo</label>
-          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
-        </div>
-        ${userList.length ? `
-        <div class="mt-12">
-          <div class="text-muted">Utilisateurs récents :</div>
-          <div class="mt-4 flex">
-            ${userList.map(u => `
-              <button type="button" class="secondary" data-user="${u}">
-                ${u === lastUser ? "⭐ " : ""}${u}
-              </button>
-            `).join("")}
-          </div>
-        </div>` : ""}
-        <div class="mt-16">
-          <button id="login-btn"><span>Entrer</span></button>
-        </div>
-      `;
-
-      app.appendChild(container);
-
-      const input = container.querySelector("#login-name");
-      const btn = container.querySelector("#login-btn");
-      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
-
-      btn.addEventListener("click", () => {
-        const name = (input.value || "").trim();
-        if (!name) {
-          alert("Entre au moins un prénom ou un pseudo 🙂");
-          return;
-        }
-        saveLocal(STORAGE_KEY_USER, { name });
-        render();
-      });
-
-      input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") btn.click();
-      });
-
-      existingBtns.forEach(b => {
-        b.addEventListener("click", () => {
-          const user = b.getAttribute("data-user");
-          saveLocal(STORAGE_KEY_USER, { name: user });
-          render();
-        });
-      });
-    }
-
-    /**********************
-     * VUE PRINCIPALE
-     *********************/
-
-    function renderMain(user) {
-      app.innerHTML = "";
-
-      const headerCard = document.createElement("div");
-      headerCard.className = "card";
-      headerCard.innerHTML = `
-        <div class="card-header">
-          <div>
-            <h1>Bonjour, ${user.name} 👋</h1>
-            <div class="text-muted">
-              Mode épreuve (20 QCM) avec dossiers par matière et chapitres. Scores séparés par utilisateur.
-            </div>
-          </div>
-          <div class="flex">
-            <span class="badge">Bêta exam-style</span>
-            <button class="secondary" id="logout-btn">Changer d’utilisateur</button>
-          </div>
-        </div>
-      `;
-      app.appendChild(headerCard);
-      headerCard.querySelector("#logout-btn").addEventListener("click", () => {
-        saveLocal(STORAGE_KEY_USER, null);
-        render();
-      });
-
-      const selectorCard = document.createElement("div");
-      selectorCard.className = "card";
-
-      const matieres = Object.keys(QCM_DATA);
-      const defaultMatiere = matieres[0];
-      const chapitres = Object.keys(QCM_DATA[defaultMatiere]);
-      const defaultChapitre = chapitres[0];
-
-      selectorCard.innerHTML = `
-        <div class="card-header">
-          <div>
-            <h2>Paramètres de l’épreuve</h2>
-            <div class="text-muted">
-              Choisis la matière, le chapitre ou une épreuve mélangeant les chapitres d’une même matière.
-            </div>
-          </div>
-          <div class="flex">
-            <span class="badge">Mode EDN</span>
-          </div>
-        </div>
-        <div class="mt-8">
-          <label for="select-matiere">Matière</label>
-          <select id="select-matiere"></select>
-        </div>
-        <div class="mt-8">
-          <label for="select-chapitre">Chapitre</label>
-          <select id="select-chapitre"></select>
-        </div>
-        <div class="mt-8 flex">
-          <div id="mode-chapitre" class="mode-pill active" data-mode="chapitre">Mode chapitre (20 QCM du chapitre)</div>
-          <div id="mode-matiere" class="mode-pill" data-mode="matiere">Mode épreuve matière (chapitres mélangés)</div>
-        </div>
-        <div class="mt-12 flex space-between">
-          <div style="flex:1; max-width: 180px;">
-            <label for="nb-qcm">Nombre de QCM</label>
-            <input type="number" id="nb-qcm" min="1" max="50" value="20" />
-          </div>
-          <div class="mt-8">
-            <span class="pill" id="infos-qcm"></span>
-          </div>
-        </div>
-        <div class="mt-16 flex space-between">
-          <button id="btn-start">Lancer l’épreuve</button>
-          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores</button>
-        </div>
-      `;
-      app.appendChild(selectorCard);
-
-      const selectMatiere = selectorCard.querySelector("#select-matiere");
-      const selectChapitre = selectorCard.querySelector("#select-chapitre");
-      const modeChapitrePill = selectorCard.querySelector("#mode-chapitre");
-      const modeMatierePill = selectorCard.querySelector("#mode-matiere");
-      const nbQcmInput = selectorCard.querySelector("#nb-qcm");
-      const infosQcmSpan = selectorCard.querySelector("#infos-qcm");
-      const btnStart = selectorCard.querySelector("#btn-start");
-      const btnClearUser = selectorCard.querySelector("#btn-clear-user");
-
-      matieres.forEach((m) => {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        selectMatiere.appendChild(opt);
-      });
-      selectMatiere.value = defaultMatiere;
-
-      function updateChapitres() {
-        selectChapitre.innerHTML = "";
-        const matiere = selectMatiere.value;
-        const chapList = Object.keys(QCM_DATA[matiere]);
-        chapList.forEach((c) => {
-          const opt = document.createElement("option");
-          opt.value = c;
-          opt.textContent = c;
-          selectChapitre.appendChild(opt);
-        });
-        selectChapitre.value = chapList[0];
-      }
-
-      updateChapitres();
-
-      let currentMode = "chapitre";
-
-      function updateMode(mode) {
-        currentMode = mode;
-        if (mode === "chapitre") {
-          modeChapitrePill.classList.add("active");
-          modeMatierePill.classList.remove("active");
-        } else {
-          modeChapitrePill.classList.remove("active");
-          modeMatierePill.classList.add("active");
-        }
-        updateInfoQcm();
-      }
-
-      function getAvailableQuestions() {
-        const matiere = selectMatiere.value;
-        const chapitre = selectChapitre.value;
-        if (currentMode === "chapitre") {
-          return QCM_DATA[matiere][chapitre] || [];
-        } else {
-          const all = [];
-          const chapMap = QCM_DATA[matiere];
-          Object.keys(chapMap).forEach(ch => {
-            all.push(...chapMap[ch]);
-          });
-          return all;
-        }
-      }
-
-      function updateInfoQcm() {
-        const questions = getAvailableQuestions();
-        const n = questions.length;
-        const bar = "Barème : 0 faute = 1 ; 1 faute = 0,5 ; 2 fautes = 0,2 ; ≥3 fautes = 0";
-        infosQcmSpan.textContent = `${n} QCM dispo · ${bar}`;
-      }
-
-      modeChapitrePill.addEventListener("click", () => updateMode("chapitre"));
-      modeMatierePill.addEventListener("click", () => updateMode("matiere"));
-
-      selectMatiere.addEventListener("change", () => {
-        updateChapitres();
-        updateInfoQcm();
-      });
-      selectChapitre.addEventListener("change", updateInfoQcm);
-      nbQcmInput.addEventListener("change", () => {
-        const v = parseInt(nbQcmInput.value || "20", 10);
-        if (v < 1) nbQcmInput.value = 1;
-      });
-
-      btnClearUser.addEventListener("click", () => {
-        if (!confirm("Effacer tout ton historique pour ce compte ?")) return;
-        const history = loadLocal(STORAGE_KEY_HISTORY, []);
-        const filtered = history.filter(h => h.user !== user.name);
-        saveLocal(STORAGE_KEY_HISTORY, filtered);
-        alert("Historique effacé pour " + user.name);
-        render();
-      });
-
-      const examCard = document.createElement("div");
-      examCard.className = "card";
-      examCard.id = "exam-card";
-      app.appendChild(examCard);
-
-      const historyCard = document.createElement("div");
-      historyCard.className = "card";
-      historyCard.id = "history-card";
-      app.appendChild(historyCard);
-
-      btnStart.addEventListener("click", () => {
-        const questionsPool = getAvailableQuestions();
-        if (!questionsPool.length) {
-          alert("Pas encore de QCM dans ce dossier (matière/chapitre).");
-          return;
-        }
-        const nRequested = parseInt(nbQcmInput.value || "20", 10);
-        const questions = pickRandomQuestions(questionsPool, nRequested);
-        renderExam(user, questions, {
-          matiere: selectMatiere.value,
-          chapitre: selectChapitre.value,
-          mode: currentMode
-        }, examCard, historyCard);
-      });
-
-      updateInfoQcm();
-      renderHistory(user, historyCard);
-    }
-
-    function pickRandomQuestions(pool, n) {
-      const arr = [...pool];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr.slice(0, Math.min(n, arr.length));
-    }
-
-    function gradeQuestion(question, selected) {
-      const correct = question.correct;
-      const correctSet = new Set(correct);
-      const selectedSet = new Set(selected);
-
-      let errors = 0;
-
-      selectedSet.forEach(letter => {
-        if (!correctSet.has(letter)) errors++;
-      });
-      correctSet.forEach(letter => {
-        if (!selectedSet.has(letter)) errors++;
-      });
-
-      let score = 0;
-      if (errors === 0) score = 1;
-      else if (errors === 1) score = 0,5;
-      else if (errors === 2) score = 0,2;
-      else score = 0;
-
-      let comment = "";
-      if (errors === 0) comment = "✅ Parfait, aucune erreur sur cette question.";
-      else if (errors === 1) comment = "🟡 Une seule erreur : presque parfait, mais à revoir rapidement.";
-      else if (errors === 2) comment = "🟠 Deux erreurs : notion fragile, à retravailler.";
-      else comment = "🔴 Trois erreurs ou plus : revoir le cours sur ce point.";
-
-      return { score, errorsCount: errors, comment };
-    }
-
-    function renderExam(user, questions, meta, examCard, historyCard) {
-      examCard.innerHTML = `
-        <div class="card-header">
-          <div>
-            <h2>Epreuve – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
-            <div class="text-muted">
-              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"} · ${questions.length} QCM
-            </div>
-          </div>
-          <div class="flex">
-            <span class="badge">En cours</span>
-          </div>
-        </div>
-      `;
-
-      const form = document.createElement("div");
-      form.id = "exam-form";
-
-      questions.forEach((q, index) => {
-        const qDiv = document.createElement("div");
-        qDiv.className = "qcm-question";
-        qDiv.dataset.qid = q.id;
-
-        let optionsHtml = "";
-        for (const [letter, text] of Object.entries(q.options)) {
-          optionsHtml += `
-            <label>
-              <input type="checkbox" name="${q.id}" value="${letter}" />
-              <span><strong>${letter}.</strong> ${text}</span>
-            </label>
-          `;
-        }
-
-        qDiv.innerHTML = `
-          <div class="flex space-between">
-            <div class="qcm-title">${index + 1}. ${q.question}</div>
-            <div class="chip-score" id="score-${q.id}">– / 1</div>
-          </div>
-          <div class="text-muted">Matière : ${meta.matiere} · Chapitre : ${q.chapter || meta.chapitre} · Thème : ${q.theme}</div>
-          <div class="qcm-options mt-8">
-            ${optionsHtml}
-          </div>
-          <div class="text-muted mt-8" id="feedback-${q.id}"></div>
-        `;
-        form.appendChild(qDiv);
-      });
-
-      const actionsDiv = document.createElement("div");
-      actionsDiv.className = "mt-16 flex space-between";
-      actionsDiv.innerHTML = `
-        <button id="btn-corriger">Corriger l’épreuve</button>
-        <button class="secondary" id="btn-reset">Effacer toutes les réponses</button>
-      `;
-
-      examCard.appendChild(form);
-      examCard.appendChild(actionsDiv);
-
-      const btnCorriger = examCard.querySelector("#btn-corriger");
-      const btnReset = examCard.querySelector("#btn-reset");
-
-      btnCorriger.addEventListener("click", () => {
-        corrigerEpreuve(user, questions, meta, examCard, historyCard);
-      });
-
-      btnReset.addEventListener("click", () => {
-        const checkboxes = examCard.querySelectorAll("input[type='checkbox']");
-        checkboxes.forEach(cb => cb.checked = false);
-        questions.forEach(q => {
-          const scoreChip = document.getElementById(`score-${q.id}`);
-          const feedback = document.getElementById(`feedback-${q.id}`);
-          if (scoreChip) {
-            scoreChip.textContent = "– / 1";
-            scoreChip.className = "chip-score";
-          }
-          if (feedback) feedback.textContent = "";
-        });
-      });
-    }
-
-    function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
-      let totalScore = 0;
-      const totalMax = questions.length;
-      const perQuestion = [];
-
-      questions.forEach(q => {
-        const checkboxes = examCard.querySelectorAll(`input[name='${q.id}']:checked`);
-        const selected = Array.from(checkboxes).map(cb => cb.value);
-        const { score, errorsCount, comment } = gradeQuestion(q, selected);
-
-        totalScore += score;
-        perQuestion.push({
-          id: q.id,
-          question: q.question,
-          score,
-          errorsCount,
-          theme: q.theme,
-          chapter: q.chapter,
-          advice: q.advice
-        });
-
-        const scoreChip = document.getElementById(`score-${q.id}`);
-        const feedback = document.getElementById(`feedback-${q.id}`);
-        if (scoreChip) {
-          scoreChip.textContent = `${score.toFixed(1)} / 1`;
-          scoreChip.className = "chip-score " + (
-            score === 1 ? "full" :
-            score === 0.5 ? "almost" :
-            score === 0.2 ? "low" : "zero"
-          );
-        }
-        if (feedback) {
-          feedback.innerHTML = `
-            ${comment}<br/>
-            <span class="text-muted">Correction attendue : ${q.correct.join(", ")}</span>
-          `;
-        }
-      });
-
-      const percent = totalMax ? (100 * totalScore / totalMax) : 0;
-
-      const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      history.push({
-        user: user.name,
-        date: new Date().toISOString(),
-        matiere: meta.matiere,
-        chapitre: meta.mode === "chapitre" ? meta.chapitre : "Epreuve matière",
-        mode: meta.mode,
-        totalScore,
-        totalMax,
-        percent: Math.round(percent),
-        perQuestion
-      });
-      saveLocal(STORAGE_KEY_HISTORY, history);
-
-      renderResultCard(meta, totalScore, totalMax, percent, perQuestion, examCard);
-      renderHistory(user, historyCard);
-    }
-
-    function renderResultCard(meta, totalScore, totalMax, percent, perQuestion, examCard) {
-      let existing = document.getElementById("result-card");
-      if (!existing) {
-        existing = document.createElement("div");
-        existing.id = "result-card";
-        existing.className = "card mt-16";
-        examCard.parentNode.insertBefore(existing, examCard.nextSibling);
-      }
-
-      const toReview = perQuestion.filter(q => q.score < 1);
-      const themes = new Map();
-      toReview.forEach(q => {
-        if (!themes.has(q.theme)) {
-          themes.set(q.theme, q.advice || q.theme);
-        }
-      });
-
-      let adviceHtml = "";
-      if (toReview.length === 0) {
-        adviceHtml = `<p class="text-muted">Rien de particulier à revoir sur cette épreuve, c’est propre 👌</p>`;
-      } else {
-        adviceHtml = `<ul class="advice-list">`;
-        themes.forEach((text, theme) => {
-          adviceHtml += `<li><strong>${theme} :</strong> ${text}</li>`;
-        });
-        adviceHtml += `</ul>`;
-      }
-
-      existing.innerHTML = `
-        <div class="card-header">
-          <div>
-            <h2>Résultats – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
-            <div class="text-muted">
-              Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"}
-            </div>
-          </div>
-          <div class="result-main">
-            ${totalScore.toFixed(1)} / ${totalMax} (${percent.toFixed(0)}%)
-          </div>
-        </div>
-        <div class="mt-8">
-          <div class="progress-bar">
-            <div class="progress-bar-inner" style="width:${percent}%;"></div>
-          </div>
-        </div>
-        <div class="mt-12">
-          <div class="text-muted">Conseils de révision ciblée :</div>
-          ${adviceHtml}
-        </div>
-      `;
-    }
-
-    function renderHistory(user, historyCard) {
-      const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      const userHistory = history.filter(h => h.user === user.name);
-
-      historyCard.innerHTML = `
-        <div class="card-header">
-          <div>
-            <h2>Historique de tes épreuves</h2>
-            <div class="text-muted">Scores uniquement pour ${user.name}.</div>
-          </div>
-        </div>
-      `;
-
-      if (userHistory.length === 0) {
-        const p = document.createElement("p");
-        p.className = "text-muted mt-8";
-        p.textContent = "Aucune épreuve enregistrée pour l’instant.";
-        historyCard.appendChild(p);
-        return;
-      }
-
-      userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Matière</th>
-            <th>Chapitre / Mode</th>
-            <th>Score</th>
-            <th>%</th>
-            <th>Q à revoir</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${userHistory.map(h => {
-            const dateObj = new Date(h.date);
-            const labelDate = dateObj.toLocaleString("fr-FR", {
-              day: "2-digit",
-              month: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit"
-            });
-            const toReview = h.perQuestion.filter(q => q.score < 1).length;
-            return `
-              <tr>
-                <td>${labelDate}</td>
-                <td>${h.matiere}</td>
-                <td>${h.chapitre}</td>
-                <td>${h.totalScore.toFixed(1)} / ${h.totalMax}</td>
-                <td>${h.percent}%</td>
-                <td>${toReview}</td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
-      `;
-      historyCard.appendChild(table);
     }
 
     render();
