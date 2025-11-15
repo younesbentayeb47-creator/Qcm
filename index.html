@@ -1,1 +1,70 @@
-Site en construction
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>QCM Médicaux</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+}
+h1 {
+    text-align: center;
+    color: #4caf50;
+}
+.qcm-box {
+    background: #222;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 600px;
+    margin: auto;
+}
+button {
+    padding: 15px;
+    background: #4caf50;
+    border: none;
+    color: white;
+    width: 100%;
+    font-size: 18px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+button:hover {
+    background: #45a049;
+}
+</style>
+</head>
+<body>
+
+<h1>QCM Médicaux</h1>
+
+<div class="qcm-box">
+    <p><b>Q1. Le Plasmodium vivax peut provoquer :</b></p>
+    
+    <label><input type="checkbox" id="a"> Des rechutes liées aux hypnozoïtes</label><br>
+    <label><input type="checkbox" id="b"> Des accès graves fréquents</label><br>
+    <label><input type="checkbox" id="c"> Une infection uniquement en Afrique</label><br>
+
+    <button onclick="corriger()">Corriger</button>
+    <p id="resultat"></p>
+</div>
+
+<script>
+function corriger() {
+    let a = document.getElementById("a").checked;
+    let b = document.getElementById("b").checked;
+    let c = document.getElementById("c").checked;
+
+    if (a && !b && !c) {
+        document.getElementById("resultat").innerHTML = "<span style='color:#4caf50'>✔ Bonne réponse !</span>";
+    } else {
+        document.getElementById("resultat").innerHTML = "<span style='color:red'>❌ Incorrect</span><br>La bonne réponse est : A";
+    }
+}
+</script>
+
+</body>
+</html>
