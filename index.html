@@ -213,6 +213,7 @@
       font-size: 13px;
     }
     .advice-list li { margin-bottom: 4px; }
+
     .mode-pill {
       padding: 4px 10px;
       border-radius: 999px;
@@ -225,6 +226,22 @@
       border-color: #4f46e5;
       background: #111827;
     }
+
+    .rank-icon {
+      font-size: 16px;
+      margin-right: 4px;
+    }
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      font-size: 12px;
+    }
+
     @media (max-width: 700px) {
       .card-header {
         flex-direction: column;
@@ -236,7 +253,56 @@
 <body>
   <div class="app" id="app"></div>
 
+  <!-- Librairie Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
+    /**********************
+     * SUPABASE – CONFIG
+     *********************/
+    const SUPABASE_URL = "https://hgzjrzucvrrakpltpiuu.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnempyenVjdnJyYWtwbHRwaXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMyNDIwMjgsImV4cCI6MjA3ODgxODAyOH0.1X-ZSpqYHp-k54VJjtQtBr6yCcMbOnrh6yCdgS2fKqo";
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function saveScoreToSupabase(pseudo, matiere, score, total, percent) {
+      try {
+        const { error } = await supabaseClient
+          .from("scores")
+          .insert([
+            {
+              pseudo,
+              matiere,
+              score,
+              total,
+              percent
+            }
+          ]);
+        if (error) {
+          console.error("Erreur Supabase (insert):", error);
+        }
+      } catch (e) {
+        console.error("Exception Supabase:", e);
+      }
+    }
+
+    async function fetchGlobalScoresFromSupabase() {
+      try {
+        const { data, error } = await supabaseClient
+          .from("scores")
+          .select("*")
+          .order("percent", { ascending: false });
+        if (error) {
+          console.error("Erreur Supabase (select):", error);
+          return [];
+        }
+        return data || [];
+      } catch (e) {
+        console.error("Exception Supabase:", e);
+        return [];
+      }
+    }
+
     /**********************
      * STOCKAGE LOCAL
      *********************/
@@ -257,108 +323,40 @@
     /**********************
      * RANGS / CLASSEMENT
      *********************/
-    function getRankLabel(percent) {
-      if (percent >= 98) return "Élite Global";
-      if (percent >= 95) return "Grand Champion";
-      if (percent >= 90) return "Champion";
-      if (percent >= 80) return "Platine";
-      if (percent >= 70) return "Cristal";
-      if (percent >= 60) return "Or";
-      if (percent >= 45) return "Bronze";
-      return "Fer";
+    function getRankInfo(percent) {
+      if (percent >= 98) return { name: "Élite Global", icon: "👑" };
+      if (percent >= 95) return { name: "Grand Champion", icon: "🏆" };
+      if (percent >= 90) return { name: "Champion", icon: "🏅" };
+      if (percent >= 80) return { name: "Platine", icon: "🔷" };
+      if (percent >= 70) return { name: "Cristal", icon: "💠" };
+      if (percent >= 60) return { name: "Or", icon: "🟡" };
+      if (percent >= 45) return { name: "Bronze", icon: "🟤" };
+      return { name: "Fer", icon: "🪨" };
     }
 
-    function computeGlobalStats(history) {
-      const perUser = new Map();
-      history.forEach(h => {
-        if (!perUser.has(h.user)) {
-          perUser.set(h.user, { sum: 0, n: 0 });
+    function computeGlobalStatsFromRows(rows) {
+      const perPseudo = new Map();
+      rows.forEach(r => {
+        const pseudo = r.pseudo || "Inconnu";
+        if (!perPseudo.has(pseudo)) {
+          perPseudo.set(pseudo, { sum: 0, n: 0 });
         }
-        const obj = perUser.get(h.user);
-        obj.sum += h.percent;
+        const obj = perPseudo.get(pseudo);
+        obj.sum += r.percent;
         obj.n += 1;
       });
+
       const arr = [];
-      perUser.forEach((v, user) => {
+      perPseudo.forEach((v, pseudo) => {
         const avg = v.n ? v.sum / v.n : 0;
         arr.push({
-          user,
+          pseudo,
           avg,
-          rank: getRankLabel(avg)
+          rankInfo: getRankInfo(avg)
         });
       });
       arr.sort((a, b) => b.avg - a.avg);
       return arr;
-    }
-
-    /**********************
-     * LOGIN
-     *********************/
-    function renderLogin() {
-      app.innerHTML = "";
-      const container = document.createElement("div");
-      container.className = "login-container card";
-
-      const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      const userSet = new Set(history.map(h => h.user));
-      const userList = Array.from(userSet);
-
-      let lastUser = null;
-      if (history.length > 0) lastUser = history[history.length - 1].user;
-
-      container.innerHTML = `
-        <div class="login-title">QCM Médicaux – Epreuves</div>
-        <div class="login-sub">
-          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
-          Multi-utilisateurs : chacun garde ses scores.
-        </div>
-        <div class="mt-16">
-          <label for="login-name">Nom / Pseudo</label>
-          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
-        </div>
-        ${userList.length ? `
-        <div class="mt-12">
-          <div class="text-muted">Utilisateurs récents :</div>
-          <div class="mt-4 flex">
-            ${userList.map(u => `
-              <button type="button" class="secondary" data-user="${u}">
-                ${u === lastUser ? "⭐ " : ""}${u}
-              </button>
-            `).join("")}
-          </div>
-        </div>` : ""}
-        <div class="mt-16">
-          <button id="login-btn"><span>Entrer</span></button>
-        </div>
-      `;
-
-      app.appendChild(container);
-
-      const input = container.querySelector("#login-name");
-      const btn = container.querySelector("#login-btn");
-      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
-
-      btn.addEventListener("click", () => {
-        const name = (input.value || "").trim();
-        if (!name) {
-          alert("Entre au moins un prénom ou un pseudo 🙂");
-          return;
-        }
-        saveLocal(STORAGE_KEY_USER, { name });
-        render();
-      });
-
-      input.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") btn.click();
-      });
-
-      existingBtns.forEach(b => {
-        b.addEventListener("click", () => {
-          const user = b.getAttribute("data-user");
-          saveLocal(STORAGE_KEY_USER, { name: user });
-          render();
-        });
-      });
     }
 
     /**********************
@@ -407,6 +405,76 @@
     }
 
     /**********************
+     * LOGIN
+     *********************/
+    function renderLogin() {
+      app.innerHTML = "";
+      const container = document.createElement("div");
+      container.className = "login-container card";
+
+      const history = loadLocal(STORAGE_KEY_HISTORY, []);
+      const userSet = new Set(history.map(h => h.user));
+      const userList = Array.from(userSet);
+
+      let lastUser = null;
+      if (history.length > 0) lastUser = history[history.length - 1].user;
+
+      container.innerHTML = `
+        <div class="login-title">QCM Médicaux – Epreuves</div>
+        <div class="login-sub">
+          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
+          Multi-utilisateurs (local) + classement global (Supabase).
+        </div>
+        <div class="mt-16">
+          <label for="login-name">Nom / Pseudo</label>
+          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
+        </div>
+        ${userList.length ? `
+        <div class="mt-12">
+          <div class="text-muted">Utilisateurs récents (sur cet appareil) :</div>
+          <div class="mt-4 flex">
+            ${userList.map(u => `
+              <button type="button" class="secondary" data-user="${u}">
+                ${u === lastUser ? "⭐ " : ""}${u}
+              </button>
+            `).join("")}
+          </div>
+        </div>` : ""}
+        <div class="mt-16">
+          <button id="login-btn"><span>Entrer</span></button>
+        </div>
+      `;
+
+      app.appendChild(container);
+
+      const input = container.querySelector("#login-name");
+      const btn = container.querySelector("#login-btn");
+      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
+
+      btn.addEventListener("click", () => {
+        const name = (input.value || "").trim();
+        if (!name) {
+          alert("Entre au moins un prénom ou un pseudo 🙂");
+          return;
+        }
+        saveLocal(STORAGE_KEY_USER, { name });
+        render();
+      });
+
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") btn.click();
+      });
+
+      existingBtns.forEach(b => {
+        b.addEventListener("click", () => {
+          const user = b.getAttribute("data-user");
+          saveLocal(STORAGE_KEY_USER, { name: user });
+          render();
+        });
+      });
+    }
+
+    /**********************
      * VUE PRINCIPALE
      *********************/
     function renderMain(user) {
@@ -419,7 +487,7 @@
           <div>
             <h1>Bonjour, ${user.name} 👋</h1>
             <div class="text-muted">
-              Mode épreuve (20 QCM) avec dossiers par matière et chapitres. Scores séparés par utilisateur.
+              Mode épreuve avec dossiers par matière et chapitres. Scores séparés par utilisateur + classement global.
             </div>
           </div>
           <div class="flex">
@@ -476,7 +544,7 @@
         </div>
         <div class="mt-16 flex space-between">
           <button id="btn-start">Lancer l’épreuve</button>
-          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores</button>
+          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores (local)</button>
         </div>
       `;
       app.appendChild(selectorCard);
@@ -563,11 +631,11 @@
       });
 
       btnClearUser.addEventListener("click", () => {
-        if (!confirm("Effacer tout ton historique pour ce compte ?")) return;
+        if (!confirm("Effacer tout ton historique local pour ce compte ?")) return;
         const history = loadLocal(STORAGE_KEY_HISTORY, []);
         const filtered = history.filter(h => h.user !== user.name);
         saveLocal(STORAGE_KEY_HISTORY, filtered);
-        alert("Historique effacé pour " + user.name);
+        alert("Historique effacé pour " + user.name + " (local seulement).");
         render();
       });
 
@@ -682,7 +750,7 @@
       });
     }
 
-    function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
+    async function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
       let totalScore = 0;
       const totalMax = questions.length;
       const perQuestion = [];
@@ -722,7 +790,9 @@
       });
 
       const percent = totalMax ? (100 * totalScore / totalMax) : 0;
+      const percentRounded = Math.round(percent);
 
+      // Historique local
       const history = loadLocal(STORAGE_KEY_HISTORY, []);
       history.push({
         user: user.name,
@@ -732,10 +802,19 @@
         mode: meta.mode,
         totalScore,
         totalMax,
-        percent: Math.round(percent),
+        percent: percentRounded,
         perQuestion
       });
       saveLocal(STORAGE_KEY_HISTORY, history);
+
+      // Enregistrement Supabase (classement global multi-appareils)
+      await saveScoreToSupabase(
+        user.name,
+        meta.matiere,
+        totalScore,
+        totalMax,
+        percentRounded
+      );
 
       renderResultCard(user, meta, totalScore, totalMax, percent, perQuestion, examCard);
       renderHistory(user, historyCard);
@@ -769,7 +848,7 @@
         adviceHtml += `</ul>`;
       }
 
-      // Rang de l’utilisateur dans cette matière (moyenne de toutes ses épreuves de la matière)
+      // Rang de l’utilisateur dans cette matière (moyenne de ses épreuves locales de la matière)
       const history = loadLocal(STORAGE_KEY_HISTORY, []);
       const sameMatiere = history.filter(
         h => h.user === user.name && h.matiere === meta.matiere
@@ -779,7 +858,7 @@
         const sum = sameMatiere.reduce((acc, h) => acc + h.percent, 0);
         avgMatiere = sum / sameMatiere.length;
       }
-      const rankLabel = getRankLabel(avgMatiere);
+      const rankInfo = getRankInfo(avgMatiere);
 
       existing.innerHTML = `
         <div class="card-header">
@@ -799,8 +878,11 @@
           </div>
         </div>
         <div class="mt-12">
-          <div class="text-muted">Ton rang dans ${meta.matiere} (moyenne de tes épreuves) :</div>
-          <p><strong>${rankLabel}</strong> · Moyenne ${avgMatiere.toFixed(0)}%</p>
+          <div class="text-muted">Ton rang dans ${meta.matiere} (moyenne locale de tes épreuves) :</div>
+          <p class="rank-badge">
+            <span class="rank-icon">${rankInfo.icon}</span>
+            <span>${rankInfo.name}</span> · ${avgMatiere.toFixed(0)}%
+          </p>
         </div>
         <div class="mt-12">
           <div class="text-muted">Conseils de révision ciblée :</div>
@@ -810,25 +892,28 @@
     }
 
     /**********************
-     * HISTORIQUE + CLASSEMENT
+     * HISTORIQUE + CLASSEMENT GLOBAL
      *********************/
-    function renderHistory(user, historyCard) {
+    async function renderHistory(user, historyCard) {
       const history = loadLocal(STORAGE_KEY_HISTORY, []);
       const userHistory = history.filter(h => h.user === user.name);
 
       historyCard.innerHTML = `
         <div class="card-header">
           <div>
-            <h2>Historique et classement</h2>
-            <div class="text-muted">Scores pour ${user.name} + comparatif entre utilisateurs (même appareil).</div>
+            <h2>Historique & Classement</h2>
+            <div class="text-muted">
+              Historique local pour ${user.name} + classement global (tous appareils, Supabase).
+            </div>
           </div>
         </div>
       `;
 
+      // Historique local
       if (userHistory.length === 0) {
         const p = document.createElement("p");
         p.className = "text-muted mt-8";
-        p.textContent = "Aucune épreuve enregistrée pour l’instant.";
+        p.textContent = "Aucune épreuve locale enregistrée pour l’instant.";
         historyCard.appendChild(p);
       } else {
         userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -871,38 +956,60 @@
         historyCard.appendChild(table);
       }
 
-      // Tableau de classement global
-      if (history.length > 0) {
-        const stats = computeGlobalStats(history);
-        const rankTable = document.createElement("table");
-        rankTable.className = "mt-16";
-        rankTable.innerHTML = `
-          <thead>
-            <tr>
-              <th>Classement</th>
-              <th>Utilisateur</th>
-              <th>Moyenne globale</th>
-              <th>Niveau</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${stats.map((s, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${s.user}</td>
-                <td>${s.avg.toFixed(0)}%</td>
-                <td>${s.rank}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        `;
-        historyCard.appendChild(rankTable);
+      // Classement global Supabase
+      const globalDiv = document.createElement("div");
+      globalDiv.className = "mt-16";
+      globalDiv.innerHTML = `
+        <div class="text-muted">Classement global (tous utilisateurs / tous appareils) :</div>
+        <p class="text-muted" id="global-loading">Chargement du classement...</p>
+      `;
+      historyCard.appendChild(globalDiv);
+
+      const rows = await fetchGlobalScoresFromSupabase();
+      const loadingP = globalDiv.querySelector("#global-loading");
+      if (!rows || rows.length === 0) {
+        loadingP.textContent = "Aucun score global enregistré pour l’instant.";
+        return;
       }
+
+      const stats = computeGlobalStatsFromRows(rows);
+      loadingP.remove();
+
+      const rankTable = document.createElement("table");
+      rankTable.className = "mt-8";
+      rankTable.innerHTML = `
+        <thead>
+          <tr>
+            <th>Classement</th>
+            <th>Utilisateur</th>
+            <th>Moyenne globale</th>
+            <th>Rang</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stats.map((s, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td>${s.pseudo}</td>
+              <td>${s.avg.toFixed(0)}%</td>
+              <td>
+                <span class="rank-badge">
+                  <span class="rank-icon">${s.rankInfo.icon}</span>
+                  <span>${s.rankInfo.name}</span>
+                </span>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      `;
+      globalDiv.appendChild(rankTable);
     }
 
     /**********************
-     * DONNÉES QCM – TU AJOUTES / MODIFIES ICI
-     * (scrolle tout en bas pour ajouter de nouveaux QCM)
+     * DONNÉES QCM
+     * 🔽 C’EST ICI QUE TU AJOUTES / MODIFIES LES QCM
+     * Tu peux rajouter une matière, un chapitre, ou des questions
+     * en gardant la même structure.
      *********************/
     const QCM_DATA = {
       "Parasitologie": {
@@ -1247,7 +1354,7 @@
               "E": "Le TROD suffit pour dépister un nouveau-né."
             },
             correct: ["A","B","C","D"],
-            advice: "ELISA = test de dépistage principal ; TROD = seulement Ac."
+            advice: "ELISA = test de dépistage principal ; TROD = seulement Ac, plus tardif en primo-infection."
           },
           {
             id: "hiv-q3",
@@ -1292,7 +1399,7 @@
               "E": "La charge virale est très élevée."
             },
             correct: ["A","B","D","E"],
-            advice: "Sérologie parfois négative en primo-infection."
+            advice: "Sérologie parfois négative en primo-infection, penser ELISA combiné + charge virale."
           },
           {
             id: "hiv-q6",
@@ -1307,7 +1414,7 @@
               "E": "Il augmente le risque de certains cancers."
             },
             correct: ["A","B","D","E"],
-            advice: "La réplication virale persiste même si le patient est asymptomatique."
+            advice: "Réplication virale persistante même en phase asymptomatique."
           },
           {
             id: "hiv-q7",
@@ -1322,7 +1429,7 @@
               "E": "Hépatocytes."
             },
             correct: ["A","B","C"],
-            advice: "Réservoirs = LT CD4 mémoire + macrophages."
+            advice: "Réservoirs = LT CD4 mémoire + macrophages + cellules dendritiques."
           },
           {
             id: "hiv-q8",
@@ -1337,7 +1444,7 @@
               "E": "Favorisée par une mauvaise observance."
             },
             correct: ["A","B","C","E"],
-            advice: "Variabilité = résistances + échappement."
+            advice: "Variabilité = résistances + échappement → d’où trithérapies et observance."
           },
           {
             id: "hiv-q9",
@@ -1352,7 +1459,7 @@
               "E": "Capside p24."
             },
             correct: ["A","B","C","E"],
-            advice: "Virus enveloppé à ARN."
+            advice: "Virus enveloppé à ARN simple brin diploïde."
           },
           {
             id: "hiv-q10",
@@ -1367,7 +1474,7 @@
               "E": "Il existe des souches duales."
             },
             correct: ["A","B","C","E"],
-            advice: "R5 = CCR5 ; X4 = CXCR4."
+            advice: "R5 = CCR5 ; X4 = CXCR4 ; R5X4 utilisent les deux."
           },
           {
             id: "hiv-q11",
@@ -1382,7 +1489,7 @@
               "E": "Nécessite l’ARN viral."
             },
             correct: ["A","B","D","E"],
-            advice: "RT = très infidèle → variabilité."
+            advice: "RT virale, très infidèle, avec activité RNAse H."
           },
           {
             id: "hiv-q12",
@@ -1397,7 +1504,7 @@
               "E": "Ne concerne que les macrophages."
             },
             correct: ["A","B","D"],
-            advice: "Intégration = irréversible."
+            advice: "Intégration irréversible dans le génome cellulaire."
           },
           {
             id: "hiv-q13",
@@ -1412,7 +1519,7 @@
               "E": "Ag p24."
             },
             correct: ["A","B","C"],
-            advice: "Indirect = anticorps."
+            advice: "Indirect = anticorps (ELISA, WB, TROD)."
           },
           {
             id: "hiv-q14",
@@ -1427,7 +1534,7 @@
               "E": "ELISA combiné réduit la fenêtre sérologique."
             },
             correct: ["A","B","C","E"],
-            advice: "Ordre : ARN → p24 → Ac."
+            advice: "Ordre : ARN → p24 → Ac ; TROD plus tardif que ELISA combiné."
           },
           {
             id: "hiv-q15",
@@ -1439,10 +1546,10 @@
               "B": "Indétectable < 50 copies/mL.",
               "C": "Suit l’efficacité du traitement.",
               "D": "Utile en primo-infection.",
-              "E": "Utilisée seule pour diagnostiquer un adulte."
+              "E": "Utilisée seule pour diagnostiquer un adulte en dépistage de masse."
             },
             correct: ["A","B","C","D"],
-            advice: "Outil central de suivi."
+            advice: "Charge virale = outil central de suivi et de diagnostic précoce."
           },
           {
             id: "hiv-q16",
@@ -1457,7 +1564,7 @@
               "E": "Réduit la transmission."
             },
             correct: ["A","B","D","E"],
-            advice: "Traitement universel."
+            advice: "Traitement universel, précoce, combiné."
           },
           {
             id: "hiv-q17",
@@ -1472,7 +1579,7 @@
               "E": "Bêta-lactamines."
             },
             correct: ["A","B","C","D"],
-            advice: "Bêta-lactamines ≠ ARV."
+            advice: "Bêta-lactamines ≠ ARV ; retenir INTI, INNTI, IP, inhibiteurs d’intégrase, d’entrée."
           },
           {
             id: "hiv-q18",
@@ -1487,7 +1594,7 @@
               "E": "Favorisé par monothérapie."
             },
             correct: ["A","B","C","E"],
-            advice: "Toujours vérifier observance."
+            advice: "Échec virologique = vérifier observance + adapter traitement."
           },
           {
             id: "hiv-q19",
@@ -1502,7 +1609,7 @@
               "E": "Inclut dépistage IST."
             },
             correct: ["A","B","C","E"],
-            advice: "TPE = urgence."
+            advice: "TPE = urgence, prise en charge globale (VIH + IST)."
           },
           {
             id: "hiv-q20",
@@ -1517,7 +1624,7 @@
               "E": "Allaitement toujours autorisé."
             },
             correct: ["A","B","C","D"],
-            advice: "Objectif = CV indétectable."
+            advice: "Prévention = CV indétectable + mesures adaptées ; allaitement à discuter selon recommandations locales."
           },
           {
             id: "hiv-q21",
@@ -1532,7 +1639,7 @@
               "E": "Césarienne programmée sous CV indétectable."
             },
             correct: ["A","B","C","D"],
-            advice: "Tous ces facteurs ↑ risque."
+            advice: "Tous ces facteurs augmentent le risque de TME."
           },
           {
             id: "hiv-q22",
@@ -1543,11 +1650,11 @@
               "A": "Sérologie non interprétable.",
               "B": "Diagnostic par PCR.",
               "C": "ELISA négatif à J1 élimine la maladie.",
-              "D": "Prophylaxie possible.",
-              "E": "PCR répétées pour confirmer."
+              "D": "Prophylaxie ARV possible.",
+              "E": "PCR répétées pour confirmer l’absence d’infection."
             },
             correct: ["A","B","D","E"],
-            advice: "PCR = diagnostic."
+            advice: "Les Ac maternels faussent la sérologie → PCR nécessaires."
           },
           {
             id: "hiv-q23",
@@ -1556,13 +1663,13 @@
             chapter: "VIH",
             options: {
               "A": "CV < 50 copies/mL = indétectable.",
-              "B": "Le virus disparaît.",
-              "C": "Pas de transmission sexuelle si observance ok.",
+              "B": "Le virus disparaît de l’organisme.",
+              "C": "Pas de transmission sexuelle si observance correcte.",
               "D": "Plus besoin de suivi.",
               "E": "Basé sur de grandes études."
             },
             correct: ["A","C","E"],
-            advice: "CV indétectable = pas de transmission sexuelle."
+            advice: "U=U = puissant message de santé publique, mais nécessite observance + suivi."
           },
           {
             id: "hiv-q24",
@@ -1570,14 +1677,14 @@
             theme: "Primo-infection",
             chapter: "VIH",
             options: {
-              "A": "La primo-infection peut l’imiter.",
+              "A": "La primo-infection peut mimer une mononucléose à EBV.",
               "B": "NFS : lymphocytes activés possibles.",
               "C": "Positivité EBV exclut le VIH.",
               "D": "Survient 1 à 6 semaines après contamination.",
-              "E": "Dépistage VIH indiqué si contexte à risque."
+              "E": "Dépistage VIH indiqué en cas de contexte à risque."
             },
             correct: ["A","B","D","E"],
-            advice: "Toujours penser au VIH."
+            advice: "Toujours penser VIH devant mononucléose atypique + contexte à risque."
           },
           {
             id: "hiv-q25",
@@ -1587,9 +1694,9 @@
             options: {
               "A": "VIH-2 moins pathogène.",
               "B": "Plus fréquent en Afrique de l’Ouest.",
-              "C": "CV souvent basse.",
-              "D": "Charge virale classique toujours utilisable.",
-              "E": "Recommandations thérapeutiques différentes."
+              "C": "CV souvent plus basse.",
+              "D": "Les tests de charge virale sont toujours parfaitement adaptés.",
+              "E": "Recommandations thérapeutiques parfois différentes."
             },
             correct: ["A","B","C","E"],
             advice: "Penser VIH-2 si CV basse + origine ouest-africaine."
@@ -1602,12 +1709,12 @@
             options: {
               "A": "Explique l’échec des monothérapies.",
               "B": "Justifie les trithérapies.",
-              "C": "Favorise échappement si mauvaise observance.",
+              "C": "Favorise l’échappement en cas de mauvaise observance.",
               "D": "Sans impact clinique.",
-              "E": "Oriente le traitement via génotypage."
+              "E": "Oriente le traitement via génotypage des résistances."
             },
             correct: ["A","B","C","E"],
-            advice: "Variabilité = pivot des résistances."
+            advice: "Variabilité = pivot des résistances et de l’adaptation thérapeutique."
           },
           {
             id: "hiv-q27",
@@ -1622,7 +1729,7 @@
               "E": "Réservée aux patients VIH+."
             },
             correct: ["A","B","D"],
-            advice: "PrEP = prévention additionnelle."
+            advice: "PrEP = prévention additionnelle, ne remplace pas la prévention des autres IST."
           },
           {
             id: "hiv-q28",
@@ -1637,7 +1744,7 @@
               "E": "Péritonite bactérienne obligatoire."
             },
             correct: ["A","B","C","D"],
-            advice: "Complications infectieuses, tumorales, neuro."
+            advice: "Complications infectieuses, tumorales, neurologiques et métaboliques."
           },
           {
             id: "hiv-q29",
@@ -1647,12 +1754,12 @@
             options: {
               "A": "Confirme un ELISA positif.",
               "B": "Test de 1re intention.",
-              "C": "Nécessite plusieurs bandes.",
+              "C": "Nécessite plusieurs bandes spécifiques.",
               "D": "Peut être négatif en primo-infection.",
               "E": "Très spécifique."
             },
             correct: ["A","C","D","E"],
-            advice: "Test de confirmation."
+            advice: "Western blot = test de confirmation, pas de dépistage."
           },
           {
             id: "hiv-q30",
@@ -1661,13 +1768,13 @@
             chapter: "VIH",
             options: {
               "A": "Toujours évaluer le statut de la source.",
-              "B": "TPE indiquée si CV détectable chez la source.",
-              "C": "TROD de la source peut aider.",
+              "B": "TPE indiquée si CV détectable chez la source VIH+.",
+              "C": "TROD de la source peut aider à décider.",
               "D": "Pas d’autre dépistage nécessaire.",
               "E": "Dépistage d’autres IST recommandé."
             },
             correct: ["A","B","C","E"],
-            advice: "Prise en charge globale."
+            advice: "Prise en charge globale (VIH + IST) après exposition."
           }
         ],
         "Hépatite B": [],
@@ -1697,4 +1804,4 @@
     render();
   </script>
 </body>
-</html>
+  </html>
