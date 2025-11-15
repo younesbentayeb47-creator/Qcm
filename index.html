@@ -571,458 +571,488 @@
 
     // ===================== QCM VIROLOGIE – VIH =====================
 
-         QCM_DATA["Virologie"]["VIH"] = [
+             "VIH": [
   {
-    id:"vih-q1",
-    question:"Q1. Primo-infection VIH :",
-    theme:"Primo-infection",
-    chapter:"VIH",
-    options:{
-      "A":"Tableau fréquent de syndrome pseudo-grippal.",
-      "B":"Charge virale très élevée.",
-      "C":"Sérologie souvent déjà positive.",
-      "D":"C’est un diagnostic facile sur TROD seul.",
-      "E":"Elle peut être totalement asymptomatique."
+    id: "hiv-q1",
+    question: "Q1. Primo-infection VIH :",
+    theme: "Primo-infection",
+    chapter: "VIH",
+    options: {
+      "A": "Peut être asymptomatique.",
+      "B": "Peut donner un tableau pseudo-grippal ou mononucléosique.",
+      "C": "Les anticorps sont toujours positifs d’emblée.",
+      "D": "La charge virale est élevée.",
+      "E": "C’est une période très contagieuse."
     },
-    correct:["A","B","E"],
-    advice:"Primo infection = charge virale max, symptômes aspécifiques, sérologie parfois tardive."
+    correct: ["A","B","D","E"],
+    advice: "Primo-infection = charge virale très élevée, sérologie parfois négative."
   },
+
   {
-    id:"vih-q2",
-    question:"Q2. Diagnostic de primo-infection VIH :",
-    theme:"Diagnostic direct",
-    chapter:"VIH",
-    options:{
-      "A":"Recherche ARN plasmatique très utile.",
-      "B":"Recherche Ag p24 positive précocement.",
-      "C":"TROD est sensible immédiatement après contamination.",
-      "D":"ELISA combiné utile en 1ère intention.",
-      "E":"Western Blot indispensable pour confirmer."
+    id: "hiv-q2",
+    question: "Q2. Dépistage du VIH :",
+    theme: "Dépistage",
+    chapter: "VIH",
+    options: {
+      "A": "L’ELISA combiné recherche Ag p24 + Ac.",
+      "B": "Le TROD détecte uniquement les anticorps.",
+      "C": "Le TROD peut être négatif en primo-infection.",
+      "D": "Un ELISA positif doit être confirmé.",
+      "E": "Le TROD suffit pour dépister un nouveau-né."
     },
-    correct:["A","B","D"],
-    advice:"Fenêtre sérologique : TROD/WB peuvent être négatifs."
+    correct: ["A","B","C","D"],
+    advice: "ELISA = test de dépistage principal ; TROD = seulement Ac."
   },
+
   {
-    id:"vih-q3",
-    question:"Q3. Charge virale VIH :",
-    theme:"Charge virale",
-    chapter:"VIH",
-    options:{
-      "A":"Mesurée par RT-PCR.",
-      "B":"Détectable avant la séroconversion.",
-      "C":"Permet le suivi du traitement.",
-      "D":"Indétectable = < 50 copies/mL.",
-      "E":"Utile seule pour dépister la primo-infection."
+    id: "hiv-q3",
+    question: "Q3. Modes de transmission du VIH :",
+    theme: "Transmission",
+    chapter: "VIH",
+    options: {
+      "A": "Sexuelle.",
+      "B": "Sanguine.",
+      "C": "Mère-enfant.",
+      "D": "Respiratoire.",
+      "E": "Eau potable."
     },
-    correct:["A","B","C","D"],
-    advice:"Diagnostic standard = sérologie, pas CV seule."
+    correct: ["A","B","C"],
+    advice: "Transmission = sexuelle, sanguine, materno-fœtale."
   },
+
   {
-    id:"vih-q4",
-    question:"Q4. Sérologie VIH (ELISA 4e génération) :",
-    theme:"Dépistage",
-    chapter:"VIH",
-    options:{
-      "A":"Recherche Ag p24 et anticorps.",
-      "B":"Fenêtre plus courte qu’un TROD.",
-      "C":"Test de dépistage recommandé.",
-      "D":"Un test positif doit être confirmé.",
-      "E":"Permet de quantifier la charge virale."
+    id: "hiv-q4",
+    question: "Q4. Diagnostic direct du VIH :",
+    theme: "Diagnostic direct",
+    chapter: "VIH",
+    options: {
+      "A": "ARN viral plasmatique.",
+      "B": "ADN proviral.",
+      "C": "Western blot.",
+      "D": "Antigène p24.",
+      "E": "TROD."
     },
-    correct:["A","B","C","D"],
-    advice:"ELISA combiné = test de référence."
+    correct: ["A","B","D"],
+    advice: "Direct = ARN, ADN proviral, Ag p24."
   },
+
   {
-    id:"vih-q5",
-    question:"Q5. Western Blot VIH :",
-    theme:"Confirmation",
-    chapter:"VIH",
-    options:{
-      "A":"Test de confirmation.",
-      "B":"Interprétable uniquement si anticorps présents.",
-      "C":"Indéterminé en primo-infection précoce.",
-      "D":"Peut confirmer ELISA positif.",
-      "E":"C’est un test de dépistage."
+    id: "hiv-q5",
+    question: "Q5. Primo-infection : biologie",
+    theme: "Primo-infection",
+    chapter: "VIH",
+    options: {
+      "A": "L’ARN viral apparaît très tôt.",
+      "B": "L’Ag p24 peut être détecté.",
+      "C": "Les anticorps sont immédiatement positifs.",
+      "D": "Le Western blot peut être négatif.",
+      "E": "La charge virale est très élevée."
     },
-    correct:["A","B","C","D"],
-    advice:"WB peut être négatif si trop précoce."
+    correct: ["A","B","D","E"],
+    advice: "Sérologie parfois négative en primo-infection."
   },
+
   {
-    id:"vih-q6",
-    question:"Q6. Modes de transmission VIH :",
-    theme:"Transmission",
-    chapter:"VIH",
-    options:{
-      "A":"Rapports sexuels non protégés.",
-      "B":"Sang / matériel d’injection.",
-      "C":"Mère-enfant.",
-      "D":"Gouttelettes respiratoires.",
-      "E":"Eau potable contaminée."
+    id: "hiv-q6",
+    question: "Q6. Histoire naturelle du VIH :",
+    theme: "Évolution",
+    chapter: "VIH",
+    options: {
+      "A": "La phase chronique est souvent silencieuse.",
+      "B": "Il existe une déplétion progressive des CD4.",
+      "C": "Il n’y a plus de réplication virale en phase chronique.",
+      "D": "Des infections opportunistes peuvent survenir.",
+      "E": "Il augmente le risque de certains cancers."
     },
-    correct:["A","B","C"],
-    advice:"Aucune transmission aérienne."
+    correct: ["A","B","D","E"],
+    advice: "La réplication virale persiste même si le patient est asymptomatique."
   },
+
   {
-    id:"vih-q7",
-    question:"Q7. Cellules cibles du VIH :",
-    theme:"Immunologie",
-    chapter:"VIH",
-    options:{
-      "A":"LT CD4+.",
-      "B":"Macrophages.",
-      "C":"Cellules dendritiques.",
-      "D":"Hématies.",
-      "E":"Hépatocytes."
+    id: "hiv-q7",
+    question: "Q7. Cellules cibles du VIH :",
+    theme: "Cellules cibles",
+    chapter: "VIH",
+    options: {
+      "A": "LT CD4+.",
+      "B": "Macrophages.",
+      "C": "Cellules dendritiques.",
+      "D": "Lymphocytes B.",
+      "E": "Hépatocytes."
     },
-    correct:["A","B","C"],
-    advice:"Les réservoirs = surtout CD4 mémoires."
+    correct: ["A","B","C"],
+    advice: "Réservoirs = LT CD4 mémoire + macrophages."
   },
+
   {
-    id:"vih-q8",
-    question:"Q8. Cycle du VIH :",
-    theme:"Cycle viral",
-    chapter:"VIH",
-    options:{
-      "A":"Entrée via CD4 + co-récepteurs.",
-      "B":"Intégration obligatoire via intégrase.",
-      "C":"Synthèse polyprotéines.",
-      "D":"Cible des ARV sur plusieurs étapes.",
-      "E":"Pas de phase intégrée dans l’ADN cellulaire."
+    id: "hiv-q8",
+    question: "Q8. Variabilité du VIH :",
+    theme: "Variabilité",
+    chapter: "VIH",
+    options: {
+      "A": "Due à la reverse transcriptase peu fidèle.",
+      "B": "Explique les résistances.",
+      "C": "Permet l’échappement immunitaire.",
+      "D": "Sans conséquence clinique.",
+      "E": "Favorisée par une mauvaise observance."
     },
-    correct:["A","B","C","D"],
-    advice:"Phase provirale = irréversible."
+    correct: ["A","B","C","E"],
+    advice: "Variabilité = résistances + échappement."
   },
+
   {
-    id:"vih-q9",
-    question:"Q9. Co-récepteurs VIH :",
-    theme:"Entrée virale",
-    chapter:"VIH",
-    options:{
-      "A":"CCR5 utilisé par souches R5.",
-      "B":"CXCR4 par souches X4.",
-      "C":"R5 = majoritaires au début.",
-      "D":"X4 = formes tardives possibles.",
-      "E":"CCR1 = co-récepteur principal."
+    id: "hiv-q9",
+    question: "Q9. Structure virale du VIH :",
+    theme: "Structure",
+    chapter: "VIH",
+    options: {
+      "A": "Virus enveloppé.",
+      "B": "Gènes gag, pol, env.",
+      "C": "gp120/gp41 = enveloppe.",
+      "D": "Génome ADN double brin.",
+      "E": "Capside p24."
     },
-    correct:["A","B","C","D"],
-    advice:"CCR5 → primo infection et transmission."
+    correct: ["A","B","C","E"],
+    advice: "Virus enveloppé à ARN."
   },
+
   {
-    id:"vih-q10",
-    question:"Q10. Génome VIH :",
-    theme:"Génétique",
-    chapter:"VIH",
-    options:{
-      "A":"2 ARN simple brin.",
-      "B":"gag code la capside.",
-      "C":"pol code RT/protéase/intégrase.",
-      "D":"env code gp120/gp41.",
-      "E":"Le génome est ADN double brin."
+    id: "hiv-q10",
+    question: "Q10. Attachement/entrée du VIH :",
+    theme: "Entrée virale",
+    chapter: "VIH",
+    options: {
+      "A": "gp120 ↔ CD4.",
+      "B": "CCR5 et CXCR4 = corécepteurs.",
+      "C": "gp41 assure la fusion.",
+      "D": "Les souches R5 utilisent CXCR4.",
+      "E": "Il existe des souches duales."
     },
-    correct:["A","B","C","D"],
-    advice:"ARN diploïde + LTR."
+    correct: ["A","B","C","E"],
+    advice: "R5 = CCR5 ; X4 = CXCR4."
   },
+
   {
-    id:"vih-q11",
-    question:"Q11. Histoire naturelle de l’infection :",
-    theme:"Histoire naturelle",
-    chapter:"VIH",
-    options:{
-      "A":"Primo infection très contagieuse.",
-      "B":"Phase chronique souvent silencieuse.",
-      "C":"Réplication virale persistante.",
-      "D":"CD4 diminuent progressivement.",
-      "E":"Latence virologique complète pendant années."
+    id: "hiv-q11",
+    question: "Q11. Reverse transcription :",
+    theme: "Cycle viral",
+    chapter: "VIH",
+    options: {
+      "A": "Produit un ADN double brin.",
+      "B": "Réalisée grâce à une enzyme virale.",
+      "C": "Très fidèle.",
+      "D": "A lieu dans le cytoplasme.",
+      "E": "Nécessite l’ARN viral."
     },
-    correct:["A","B","C","D"],
-    advice:"Pas de vraie latence virologique."
+    correct: ["A","B","D","E"],
+    advice: "RT = très infidèle → variabilité."
   },
+
   {
-    id:"vih-q12",
-    question:"Q12. Syndrome mononucléosique :",
-    theme:"Clinique",
-    chapter:"VIH",
-    options:{
-      "A":"Peut évoquer une primo-infection VIH.",
-      "B":"EBV/CMV sont diagnostics différentiels.",
-      "C":"NFS peut montrer lymphocytes activés.",
-      "D":"Survient 1–6 semaines post-contamination.",
-      "E":"Élimine formellement VIH si EBV positif."
+    id: "hiv-q12",
+    question: "Q12. Intégration du VIH :",
+    theme: "Cycle viral",
+    chapter: "VIH",
+    options: {
+      "A": "Rendue possible par l’intégrase.",
+      "B": "L’ADN proviral est intégré dans l’ADN cellulaire.",
+      "C": "Processus réversible.",
+      "D": "Permet une expression continue du virus.",
+      "E": "Ne concerne que les macrophages."
     },
-    correct:["A","B","C","D"],
-    advice:"Toujours tester VIH si risque."
+    correct: ["A","B","D"],
+    advice: "Intégration = irréversible."
   },
+
   {
-    id:"vih-q13",
-    question:"Q13. Complications VIH évolué :",
-    theme:"Complications",
-    chapter:"VIH",
-    options:{
-      "A":"Candidose œsophagienne.",
-      "B":"Pneumocystose.",
-      "C":"Toxoplasmose cérébrale.",
-      "D":"Sarcome de Kaposi.",
-      "E":"Dengue."
+    id: "hiv-q13",
+    question: "Q13. Diagnostic indirect (VIH) :",
+    theme: "Diagnostic indirect",
+    chapter: "VIH",
+    options: {
+      "A": "Recherche d’anticorps.",
+      "B": "Western blot.",
+      "C": "ELISA combiné.",
+      "D": "Charge virale.",
+      "E": "Ag p24."
     },
-    correct:["A","B","C","D"],
-    advice:"Définitions du SIDA."
+    correct: ["A","B","C"],
+    advice: "Indirect = anticorps."
   },
+
   {
-    id:"vih-q14",
-    question:"Q14. Traitement ARV :",
-    theme:"Traitement",
-    chapter:"VIH",
-    options:{
-      "A":"Indiqué chez tout patient VIH.",
-      "B":"Début précoce recommandé.",
-      "C":"Objectif = CV indétectable.",
-      "D":"Interruption possible quand CV < 50.",
-      "E":"Association de plusieurs ARV."
+    id: "hiv-q14",
+    question: "Q14. Cinétique des marqueurs VIH :",
+    theme: "Marqueurs",
+    chapter: "VIH",
+    options: {
+      "A": "ARN viral apparaît en premier.",
+      "B": "Ag p24 ensuite.",
+      "C": "Anticorps plus tard.",
+      "D": "Le TROD devient positif très tôt.",
+      "E": "ELISA combiné réduit la fenêtre sérologique."
     },
-    correct:["A","B","C","E"],
-    advice:"Pas d'arrêt même si CV indétectable."
+    correct: ["A","B","C","E"],
+    advice: "Ordre : ARN → p24 → Ac."
   },
+
   {
-    id:"vih-q15",
-    question:"Q15. Classes ARV :",
-    theme:"Traitement",
-    chapter:"VIH",
-    options:{
-      "A":"INTI.",
-      "B":"INNTI.",
-      "C":"Inhibiteurs de protéase.",
-      "D":"Inhibiteurs d’intégrase.",
-      "E":"Bêta-lactamines."
+    id: "hiv-q15",
+    question: "Q15. Charge virale :",
+    theme: "Charge virale",
+    chapter: "VIH",
+    options: {
+      "A": "Mesurée par RT-PCR.",
+      "B": "Indétectable < 50 copies/mL.",
+      "C": "Suit l’efficacité du traitement.",
+      "D": "Utile en primo-infection.",
+      "E": "Utilisée seule pour diagnostiquer un adulte."
     },
-    correct:["A","B","C","D"],
-    advice:"+ inhibiteurs d’entrée."
+    correct: ["A","B","C","D"],
+    advice: "Outil central de suivi."
   },
+
   {
-    id:"vih-q16",
-    question:"Q16. PPE VIH :",
-    theme:"PPE",
-    chapter:"VIH",
-    options:{
-      "A":"Urgence thérapeutique.",
-      "B":"Démarrage idéal < 4–6 h.",
-      "C":"Indiquée si source VIH+ CV détectable.",
-      "D":"Durée 28 jours.",
-      "E":"Monothérapie suffisante."
+    id: "hiv-q16",
+    question: "Q16. Traitement antirétroviral (ARV) :",
+    theme: "Traitement",
+    chapter: "VIH",
+    options: {
+      "A": "Indiqué pour tout patient VIH+.",
+      "B": "Débuté précocement.",
+      "C": "Monothérapie suffisante.",
+      "D": "Objectif = CV indétectable.",
+      "E": "Réduit la transmission."
     },
-    correct:["A","B","C","D"],
-    advice:"Toujours association ≥ 2 ARV."
+    correct: ["A","B","D","E"],
+    advice: "Traitement universel."
   },
+
   {
-    id:"vih-q17",
-    question:"Q17. Exposition sexuelle à risque :",
-    theme:"PPE / IST",
-    chapter:"VIH",
-    options:{
-      "A":"Interroger statut VIH de la source.",
-      "B":"TROD source utile.",
-      "C":"PPE selon risque.",
-      "D":"IST à dépister systématiquement.",
-      "E":"PPE inutile si > 24 h."
+    id: "hiv-q17",
+    question: "Q17. Classes d’ARV :",
+    theme: "ARV",
+    chapter: "VIH",
+    options: {
+      "A": "INTI.",
+      "B": "INNTI.",
+      "C": "Inhibiteurs de protéase.",
+      "D": "Inhibiteurs d’intégrase.",
+      "E": "Bêta-lactamines."
     },
-    correct:["A","B","C","D"],
-    advice:"PPE possible jusqu’à 48h."
+    correct: ["A","B","C","D"],
+    advice: "Bêta-lactamines ≠ ARV."
   },
+
   {
-    id:"vih-q18",
-    question:"Q18. Quasi-espèces VIH :",
-    theme:"Variabilité",
-    chapter:"VIH",
-    options:{
-      "A":"Liées à l’infidélité de RT.",
-      "B":"Explique résistances.",
-      "C":"Favorisées par monothérapies.",
-      "D":"Impliquent adaptation traitement.",
-      "E":"Absentes en primo-infection."
+    id: "hiv-q18",
+    question: "Q18. Résistance / échappement :",
+    theme: "Résistances",
+    chapter: "VIH",
+    options: {
+      "A": "Favorisé par mauvaise observance.",
+      "B": "Détecté par génotypage.",
+      "C": "S’accompagne d’une remontée de CV.",
+      "D": "Ne nécessite jamais d’adaptation thérapeutique.",
+      "E": "Favorisé par monothérapie."
     },
-    correct:["A","B","C","D"],
-    advice:"→ nécessité trithérapie."
+    correct: ["A","B","C","E"],
+    advice: "Toujours vérifier observance."
   },
+
   {
-    id:"vih-q19",
-    question:"Q19. VIH et grossesse :",
-    theme:"Transmission mère-enfant",
-    chapter:"VIH",
-    options:{
-      "A":"Sérologie systématique.",
-      "B":"Risque sans prévention ≈ 20–25%.",
-      "C":"CV maternelle = facteur majeur.",
-      "D":"TME <1% si prévention.",
-      "E":"Allaitement autorisé systématiquement."
+    id: "hiv-q19",
+    question: "Q19. PPE / exposition à risque :",
+    theme: "TPE/PPE",
+    chapter: "VIH",
+    options: {
+      "A": "Doit être débutée rapidement.",
+      "B": "Utile si la source est VIH+ à CV détectable.",
+      "C": "Un TROD chez la source aide à décider.",
+      "D": "Toujours inutile après 24 h.",
+      "E": "Inclut dépistage IST."
     },
-    correct:["A","B","C","D"],
-    advice:"Allaitement déconseillé en France."
+    correct: ["A","B","C","E"],
+    advice: "TPE = urgence."
   },
+
   {
-    id:"vih-q20",
-    question:"Q20. Nouveau-né de mère VIH+ :",
-    theme:"Nouveau-né",
-    chapter:"VIH",
-    options:{
-      "A":"Séro non interprétable.",
-      "B":"PCR virale nécessaire.",
-      "C":"ELISA J1 élimine VIH.",
-      "D":"Prophylaxie ARV possible.",
-      "E":"PCR répétées nécessaires."
+    id: "hiv-q20",
+    question: "Q20. VIH et grossesse :",
+    theme: "Grossesse",
+    chapter: "VIH",
+    options: {
+      "A": "Sérologie proposée systématiquement.",
+      "B": "CV maternelle = facteur clé.",
+      "C": "Sans prévention, risque ≈ 20-25%.",
+      "D": "Avec prévention optimale, risque < 1%.",
+      "E": "Allaitement toujours autorisé."
     },
-    correct:["A","B","D","E"],
-    advice:"Ac maternels traversent placenta."
+    correct: ["A","B","C","D"],
+    advice: "Objectif = CV indétectable."
   },
+
   {
-    id:"vih-q21",
-    question:"Q21. Dépistage :",
-    theme:"Dépistage",
-    chapter:"VIH",
-    options:{
-      "A":"ELISA combiné = test de référence.",
-      "B":"TROD recherche anticorps.",
-      "C":"ELISA négatif doit être confirmé systématiquement.",
-      "D":"ELISA positif → Western Blot.",
-      "E":"TROD utile en dépistage communautaire."
+    id: "hiv-q21",
+    question: "Q21. Facteurs augmentant la transmission mère-enfant :",
+    theme: "Grossesse",
+    chapter: "VIH",
+    options: {
+      "A": "Charge virale élevée.",
+      "B": "Absence d’ARV.",
+      "C": "Rupture prolongée des membranes.",
+      "D": "Allaitement.",
+      "E": "Césarienne programmée sous CV indétectable."
     },
-    correct:["A","B","D","E"],
-    advice:"ELISA négatif suffit sauf suspicion récente."
+    correct: ["A","B","C","D"],
+    advice: "Tous ces facteurs ↑ risque."
   },
+
   {
-    id:"vih-q22",
-    question:"Q22. Cinétique marqueurs VIH :",
-    theme:"Cinétique",
-    chapter:"VIH",
-    options:{
-      "A":"ARN détecté en premier.",
-      "B":"p24 avant anticorps.",
-      "C":"Ac dès premiers jours.",
-      "D":"ELISA combiné réduit fenêtre.",
-      "E":"TROD = fenêtre plus courte que ELISA."
+    id: "hiv-q22",
+    question: "Q22. Nouveau-né de mère VIH+ :",
+    theme: "Nouveau-né",
+    chapter: "VIH",
+    options: {
+      "A": "Sérologie non interprétable.",
+      "B": "Diagnostic par PCR.",
+      "C": "ELISA négatif à J1 élimine la maladie.",
+      "D": "Prophylaxie possible.",
+      "E": "PCR répétées pour confirmer."
     },
-    correct:["A","B","D"],
-    advice:"Ordre : ARN → p24 → Ac."
+    correct: ["A","B","D","E"],
+    advice: "PCR = diagnostic."
   },
+
   {
-    id:"vih-q23",
-    question:"Q23. Début ARV :",
-    theme:"Traitement",
-    chapter:"VIH",
-    options:{
-      "A":"Dès diagnostic.",
-      "B":"Urgent en primo-infection.",
-      "C":"Selon charge virale uniquement.",
-      "D":"Objectif = suppression virale.",
-      "E":"Jamais chez asymptomatique."
+    id: "hiv-q23",
+    question: "Q23. U=U (Indétectable = Intransmissible) :",
+    theme: "Prévention",
+    chapter: "VIH",
+    options: {
+      "A": "CV < 50 copies/mL = indétectable.",
+      "B": "Le virus disparaît.",
+      "C": "Pas de transmission sexuelle si observance ok.",
+      "D": "Plus besoin de suivi.",
+      "E": "Basé sur de grandes études."
     },
-    correct:["A","B","D"],
-    advice:"Traitement universel."
+    correct: ["A","C","E"],
+    advice: "CV indétectable = pas de transmission sexuelle."
   },
+
   {
-    id:"vih-q24",
-    question:"Q24. Indétectable = intransmissible :",
-    theme:"U=U",
-    chapter:"VIH",
-    options:{
-      "A":"CV < 50 = indétectable.",
-      "B":"Virus totalement éliminé.",
-      "C":"Transmission sexuelle impossible si observance.",
-      "D":"Pas de suivi nécessaire.",
-      "E":"Validé par études."
+    id: "hiv-q24",
+    question: "Q24. Syndrome mononucléosique et VIH :",
+    theme: "Primo-infection",
+    chapter: "VIH",
+    options: {
+      "A": "La primo-infection peut l’imiter.",
+      "B": "NFS : lymphocytes activés possibles.",
+      "C": "Positivité EBV exclut le VIH.",
+      "D": "Survient 1 à 6 semaines après contamination.",
+      "E": "Dépistage VIH indiqué si contexte à risque."
     },
-    correct:["A","C","E"],
-    advice:"Ne supprime pas le VIH du corps."
+    correct: ["A","B","D","E"],
+    advice: "Toujours penser au VIH."
   },
+
   {
-    id:"vih-q25",
-    question:"Q25. Facteurs favorisant résistances :",
-    theme:"Résistances",
-    chapter:"VIH",
-    options:{
-      "A":"Mauvaise observance.",
-      "B":"Monothérapie.",
-      "C":"Charge virale non contrôlée.",
-      "D":"Pression thérapeutique.",
-      "E":"Traitement précoce."
+    id: "hiv-q25",
+    question: "Q25. VIH-1 vs VIH-2 :",
+    theme: "VIH-1/VIH-2",
+    chapter: "VIH",
+    options: {
+      "A": "VIH-2 moins pathogène.",
+      "B": "Plus fréquent en Afrique de l’Ouest.",
+      "C": "CV souvent basse.",
+      "D": "Charge virale classique toujours utilisable.",
+      "E": "Recommandations thérapeutiques différentes."
     },
-    correct:["A","B","C","D"],
-    advice:"Toujours vérifier observance."
+    correct: ["A","B","C","E"],
+    advice: "Penser VIH-2 si CV basse + origine ouest-africaine."
   },
+
   {
-    id:"vih-q26",
-    question:"Q26. Suivi patient VIH :",
-    theme:"Suivi",
-    chapter:"VIH",
-    options:{
-      "A":"Charge virale régulière.",
-      "B":"CD4 réguliers.",
-      "C":"Surveillance toxicités ARV.",
-      "D":"Suivi rapproché au début.",
-      "E":"Arrêt suivi quand CV indétectable."
+    id: "hiv-q26",
+    question: "Q26. Quasi-espèces VIH :",
+    theme: "Variabilité",
+    chapter: "VIH",
+    options: {
+      "A": "Explique l’échec des monothérapies.",
+      "B": "Justifie les trithérapies.",
+      "C": "Favorise échappement si mauvaise observance.",
+      "D": "Sans impact clinique.",
+      "E": "Oriente le traitement via génotypage."
     },
-    correct:["A","B","C","D"],
-    advice:"Suivi à vie."
+    correct: ["A","B","C","E"],
+    advice: "Variabilité = pivot des résistances."
   },
+
   {
-    id:"vih-q27",
-    question:"Q27. VIH-1 vs VIH-2 :",
-    theme:"Types VIH",
-    chapter:"VIH",
-    options:{
-      "A":"VIH-2 moins pathogène.",
-      "B":"VIH-2 Afrique de l’Ouest.",
-      "C":"Charge virale VIH-2 souvent basse.",
-      "D":"ARV identiques complètement.",
-      "E":"Transmission sexuelle possible dans les deux."
+    id: "hiv-q27",
+    question: "Q27. PrEP :",
+    theme: "PrEP",
+    chapter: "VIH",
+    options: {
+      "A": "ARV chez sujets non infectés.",
+      "B": "Dépistage VIH avant initiation.",
+      "C": "Supprime l’usage du préservatif.",
+      "D": "Nécessite suivi régulier.",
+      "E": "Réservée aux patients VIH+."
     },
-    correct:["A","B","C","E"],
-    advice:"Certaines molécules moins efficaces sur VIH-2."
+    correct: ["A","B","D"],
+    advice: "PrEP = prévention additionnelle."
   },
+
   {
-    id:"vih-q28",
-    question:"Q28. Prophylaxie pré-exposition (PrEP) :",
-    theme:"PrEP",
-    chapter:"VIH",
-    options:{
-      "A":"Indiquée sujet non infecté à haut risque.",
-      "B":"Nécessite dépistage initial.",
-      "C":"Supprime besoin préservatif.",
-      "D":"Nécessite suivi régulier.",
-      "E":"Réservée aux personnes déjà VIH+."
+    id: "hiv-q28",
+    question: "Q28. Complications du VIH :",
+    theme: "Complications",
+    chapter: "VIH",
+    options: {
+      "A": "Infections opportunistes.",
+      "B": "Lymphomes.",
+      "C": "Sarcome de Kaposi.",
+      "D": "Atteintes neurocognitives.",
+      "E": "Péritonite bactérienne obligatoire."
     },
-    correct:["A","B","D"],
-    advice:"Ne protège pas d’autres IST."
+    correct: ["A","B","C","D"],
+    advice: "Complications infectieuses, tumorales, neuro."
   },
+
   {
-    id:"vih-q29",
-    question:"Q29. Transmission mère-enfant :",
-    theme:"TME",
-    chapter:"VIH",
-    options:{
-      "A":"Augmente si CV élevée.",
-      "B":"Augmente si rupture prolongée des membranes.",
-      "C":"Augmente si absence ARV maternels.",
-      "D":"Allaitement augmente risque.",
-      "E":"Césarienne augmente risque quand CV indétectable."
+    id: "hiv-q29",
+    question: "Q29. Western blot VIH :",
+    theme: "Diagnostic indirect",
+    chapter: "VIH",
+    options: {
+      "A": "Confirme un ELISA positif.",
+      "B": "Test de 1re intention.",
+      "C": "Nécessite plusieurs bandes.",
+      "D": "Peut être négatif en primo-infection.",
+      "E": "Très spécifique."
     },
-    correct:["A","B","C","D"],
-    advice:"TME ≈ 0,2–1% si prévention."
+    correct: ["A","C","D","E"],
+    advice: "Test de confirmation."
   },
+
   {
-    id:"vih-q30",
-    question:"Q30. Examens de suivi biologique :",
-    theme:"Suivi",
-    chapter:"VIH",
-    options:{
-      "A":"Charge virale.",
-      "B":"CD4.",
-      "C":"Fonction rénale si ARV.",
-      "D":"Bilan hépatique.",
-      "E":"RT-PCR CMV systématique."
+    id: "hiv-q30",
+    question: "Q30. Exposition sexuelle à risque :",
+    theme: "TPE",
+    chapter: "VIH",
+    options: {
+      "A": "Toujours évaluer le statut de la source.",
+      "B": "TPE indiquée si CV détectable chez la source.",
+      "C": "TROD de la source peut aider.",
+      "D": "Pas d’autre dépistage nécessaire.",
+      "E": "Dépistage d’autres IST recommandé."
     },
-    correct:["A","B","C","D"],
-    advice:"Surveiller toxicités ARV."
+    correct: ["A","B","C","E"],
+    advice: "Prise en charge globale."
   }
-];
+]
+        
     /**********************
      * STOCKAGE LOCAL (multi-utilisateurs)
      *********************/
