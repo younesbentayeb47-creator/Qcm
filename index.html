@@ -199,16 +199,6 @@
       align-items: center;
       gap: 4px;
     }
-    .tag {
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: #020617;
-      margin-right: 4px;
-      margin-top: 4px;
-      display: inline-block;
-    }
     .advice-list {
       font-size: 13px;
     }
@@ -253,7 +243,7 @@
 <body>
   <div class="app" id="app"></div>
 
-  <!-- Librairie Supabase -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
@@ -269,20 +259,10 @@
       try {
         const { error } = await supabaseClient
           .from("scores")
-          .insert([
-            {
-              pseudo,
-              matiere,
-              score,
-              total,
-              percent
-            }
-          ]);
-        if (error) {
-          console.error("Erreur Supabase (insert):", error);
-        }
+          .insert([{ pseudo, matiere, score, total, percent }]);
+        if (error) console.error("Erreur Supabase insert:", error);
       } catch (e) {
-        console.error("Exception Supabase:", e);
+        console.error("Exception Supabase insert:", e);
       }
     }
 
@@ -293,12 +273,12 @@
           .select("*")
           .order("percent", { ascending: false });
         if (error) {
-          console.error("Erreur Supabase (select):", error);
+          console.error("Erreur Supabase select:", error);
           return [];
         }
         return data || [];
       } catch (e) {
-        console.error("Exception Supabase:", e);
+        console.error("Exception Supabase select:", e);
         return [];
       }
     }
@@ -306,7 +286,7 @@
     /**********************
      * STOCKAGE LOCAL
      *********************/
-    const STORAGE_KEY_USER = "qcm_multi_user_v1";
+    const STORAGE_KEY_USER = "qcm_user_v1";
     const STORAGE_KEY_HISTORY = "qcm_history_v1";
 
     function saveLocal(key, value) {
@@ -326,58 +306,44 @@
     function getRankInfo(percent) {
       if (percent >= 98) return { name: "Élite Global", icon: "👑" };
       if (percent >= 95) return { name: "Grand Champion", icon: "🏆" };
-      if (percent >= 90) return { name: "Champion", icon: "🏅" };
+      if (percent >= 90) return { name: "Champion", icon: "🥇" };
       if (percent >= 80) return { name: "Platine", icon: "🔷" };
       if (percent >= 70) return { name: "Cristal", icon: "💠" };
       if (percent >= 60) return { name: "Or", icon: "🟡" };
-      if (percent >= 45) return { name: "Bronze", icon: "🟤" };
+      if (percent >= 45) return { name: "Bronze", icon: "🥉" };
       return { name: "Fer", icon: "🪨" };
     }
 
-    function computeGlobalStatsFromRows(rows) {
-      const perPseudo = new Map();
+    function computeGlobalStats(rows) {
+      const perUser = new Map();
       rows.forEach(r => {
         const pseudo = r.pseudo || "Inconnu";
-        if (!perPseudo.has(pseudo)) {
-          perPseudo.set(pseudo, { sum: 0, n: 0 });
-        }
-        const obj = perPseudo.get(pseudo);
-        obj.sum += r.percent;
-        obj.n += 1;
+        if (!perUser.has(pseudo)) perUser.set(pseudo, []);
+        perUser.get(pseudo).push(r.percent);
       });
-
-      const arr = [];
-      perPseudo.forEach((v, pseudo) => {
-        const avg = v.n ? v.sum / v.n : 0;
-        arr.push({
-          pseudo,
-          avg,
-          rankInfo: getRankInfo(avg)
-        });
+      const ranking = [];
+      perUser.forEach((list, pseudo) => {
+        const avg = list.reduce((a, b) => a + b, 0) / list.length;
+        ranking.push({ pseudo, avg, rankInfo: getRankInfo(avg) });
       });
-      arr.sort((a, b) => b.avg - a.avg);
-      return arr;
+      ranking.sort((a, b) => b.avg - a.avg);
+      return ranking;
     }
 
     /**********************
-     * NOTE PAR QUESTION (BARÈME)
+     * BARÈME
      *********************/
-    // 0 faute -> 1
-    // 1 faute -> 0.5
-    // 2 fautes -> 0.2
-    // ≥3 fautes -> 0
+    // 0 faute -> 1 ; 1 faute -> 0,5 ; 2 fautes -> 0,2 ; ≥3 fautes -> 0
     function gradeQuestion(question, selected) {
-      const correct = question.correct;
-      const correctSet = new Set(correct);
-      const selectedSet = new Set(selected);
-
+      const correct = new Set(question.correct);
+      const chosen = new Set(selected);
       let errors = 0;
 
-      selectedSet.forEach(letter => {
-        if (!correctSet.has(letter)) errors++;
+      chosen.forEach(c => {
+        if (!correct.has(c)) errors++;
       });
-      correctSet.forEach(letter => {
-        if (!selectedSet.has(letter)) errors++;
+      correct.forEach(c => {
+        if (!chosen.has(c)) errors++;
       });
 
       let score = 0;
@@ -387,12 +353,12 @@
       else score = 0;
 
       let comment = "";
-      if (errors === 0) comment = "✅ Parfait, aucune erreur sur cette question.";
-      else if (errors === 1) comment = "🟡 Une seule erreur : presque parfait, mais à revoir rapidement.";
-      else if (errors === 2) comment = "🟠 Deux erreurs : notion fragile, à retravailler.";
-      else comment = "🔴 Trois erreurs ou plus : revoir le cours sur ce point.";
+      if (errors === 0) comment = "✅ Parfait — aucune erreur.";
+      else if (errors === 1) comment = "🟡 1 erreur — presque.";
+      else if (errors === 2) comment = "🟠 2 erreurs — fragile.";
+      else comment = "🔴 3+ erreurs — revoir ce point.";
 
-      return { score, errorsCount: errors, comment };
+      return { score, errors, comment };
     }
 
     function pickRandomQuestions(pool, n) {
@@ -409,132 +375,96 @@
      *********************/
     function renderLogin() {
       app.innerHTML = "";
-      const container = document.createElement("div");
-      container.className = "login-container card";
 
-      const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      const userSet = new Set(history.map(h => h.user));
-      const userList = Array.from(userSet);
-
-      let lastUser = null;
-      if (history.length > 0) lastUser = history[history.length - 1].user;
-
-      container.innerHTML = `
-        <div class="login-title">QCM Médicaux – Epreuves</div>
-        <div class="login-sub">
-          Mode épreuve (20 QCM) par chapitre ou matière.<br/>
-          Multi-utilisateurs (local) + classement global (Supabase).
-        </div>
-        <div class="mt-16">
-          <label for="login-name">Nom / Pseudo</label>
-          <input id="login-name" type="text" placeholder="Ex : Nes, Léo, Co-D1..." />
-        </div>
-        ${userList.length ? `
-        <div class="mt-12">
-          <div class="text-muted">Utilisateurs récents (sur cet appareil) :</div>
-          <div class="mt-4 flex">
-            ${userList.map(u => `
-              <button type="button" class="secondary" data-user="${u}">
-                ${u === lastUser ? "⭐ " : ""}${u}
-              </button>
-            `).join("")}
-          </div>
-        </div>` : ""}
-        <div class="mt-16">
-          <button id="login-btn"><span>Entrer</span></button>
-        </div>
+      const box = document.createElement("div");
+      box.className = "login-container card";
+      box.innerHTML = `
+        <div class="login-title">QCM Médicaux – Connexion</div>
+        <div class="login-sub">Crée ton pseudo pour le classement mondial (Supabase).</div>
+        <label for="pseudo">Pseudo</label>
+        <input type="text" id="pseudo" placeholder="Ex : Nes, Co-D1, Léo..." />
+        <button id="login-btn" class="mt-12">Entrer</button>
       `;
+      app.appendChild(box);
 
-      app.appendChild(container);
+      const input = box.querySelector("#pseudo");
+      const btn = box.querySelector("#login-btn");
 
-      const input = container.querySelector("#login-name");
-      const btn = container.querySelector("#login-btn");
-      const existingBtns = container.querySelectorAll("button.secondary[data-user]");
-
-      btn.addEventListener("click", () => {
-        const name = (input.value || "").trim();
-        if (!name) {
-          alert("Entre au moins un prénom ou un pseudo 🙂");
+      btn.onclick = () => {
+        const p = (input.value || "").trim();
+        if (!p) {
+          alert("Entre un pseudo.");
           return;
         }
-        saveLocal(STORAGE_KEY_USER, { name });
+        saveLocal(STORAGE_KEY_USER, { name: p });
         render();
-      });
+      };
 
       input.addEventListener("keypress", (e) => {
         if (e.key === "Enter") btn.click();
       });
-
-      existingBtns.forEach(b => {
-        b.addEventListener("click", () => {
-          const user = b.getAttribute("data-user");
-          saveLocal(STORAGE_KEY_USER, { name: user });
-          render();
-        });
-      });
     }
 
     /**********************
-     * VUE PRINCIPALE
+     * PAGE PRINCIPALE
      *********************/
     function renderMain(user) {
       app.innerHTML = "";
 
-      const headerCard = document.createElement("div");
-      headerCard.className = "card";
-      headerCard.innerHTML = `
+      const header = document.createElement("div");
+      header.className = "card";
+      header.innerHTML = `
         <div class="card-header">
           <div>
-            <h1>Bonjour, ${user.name} 👋</h1>
+            <h1>Bonjour ${user.name} 👋</h1>
             <div class="text-muted">
-              Mode épreuve avec dossiers par matière et chapitres. Scores séparés par utilisateur + classement global.
+              Mode épreuve : choisis matière / chapitre, lance tes QCM. Scores locaux + classement global.
             </div>
           </div>
-          <div class="flex">
-            <span class="badge">Bêta exam-style</span>
-            <button class="secondary" id="logout-btn">Changer d’utilisateur</button>
-          </div>
+          <button id="logout" class="secondary">Changer d'utilisateur</button>
         </div>
       `;
-      app.appendChild(headerCard);
-      headerCard.querySelector("#logout-btn").addEventListener("click", () => {
+      app.appendChild(header);
+
+      header.querySelector("#logout").onclick = () => {
         saveLocal(STORAGE_KEY_USER, null);
         render();
-      });
+      };
 
       const selectorCard = document.createElement("div");
       selectorCard.className = "card";
 
       const matieres = Object.keys(QCM_DATA);
       const defaultMatiere = matieres[0];
-      const chapitres = Object.keys(QCM_DATA[defaultMatiere]);
 
       selectorCard.innerHTML = `
         <div class="card-header">
           <div>
-            <h2>Paramètres de l’épreuve</h2>
+            <h2>Paramètres de l'épreuve</h2>
             <div class="text-muted">
-              Choisis la matière, le chapitre ou une épreuve mélangeant les chapitres d’une même matière.
+              Mode chapitre (QCM d'un chapitre) ou épreuve matière (chapitres mélangés).
             </div>
           </div>
-          <div class="flex">
-            <span class="badge">Mode EDN</span>
-          </div>
+          <span class="badge">Mode EDN</span>
         </div>
+
         <div class="mt-8">
           <label for="select-matiere">Matière</label>
           <select id="select-matiere"></select>
         </div>
+
         <div class="mt-8">
           <label for="select-chapitre">Chapitre</label>
           <select id="select-chapitre"></select>
         </div>
+
         <div class="mt-8 flex">
-          <div id="mode-chapitre" class="mode-pill active" data-mode="chapitre">Mode chapitre (20 QCM du chapitre)</div>
-          <div id="mode-matiere" class="mode-pill" data-mode="matiere">Mode épreuve matière (chapitres mélangés)</div>
+          <div id="mode-chapitre" class="mode-pill active" data-mode="chapitre">Mode chapitre</div>
+          <div id="mode-matiere" class="mode-pill" data-mode="matiere">Mode matière</div>
         </div>
+
         <div class="mt-12 flex space-between">
-          <div style="flex:1; max-width: 180px;">
+          <div style="flex:1; max-width:180px;">
             <label for="nb-qcm">Nombre de QCM</label>
             <input type="number" id="nb-qcm" min="1" max="50" value="20" />
           </div>
@@ -542,9 +472,10 @@
             <span class="pill" id="infos-qcm"></span>
           </div>
         </div>
+
         <div class="mt-16 flex space-between">
-          <button id="btn-start">Lancer l’épreuve</button>
-          <button class="secondary" id="btn-clear-user">Réinitialiser mes scores (local)</button>
+          <button id="btn-start">Lancer l'épreuve</button>
+          <button class="secondary" id="btn-clear-user">Effacer mon historique local</button>
         </div>
       `;
       app.appendChild(selectorCard);
@@ -589,8 +520,8 @@
           modeChapitrePill.classList.add("active");
           modeMatierePill.classList.remove("active");
         } else {
-          modeChapitrePill.classList.remove("active");
           modeMatierePill.classList.add("active");
+          modeChapitrePill.classList.remove("active");
         }
         updateInfoQcm();
       }
@@ -602,42 +533,44 @@
           return QCM_DATA[matiere][chapitre] || [];
         } else {
           const all = [];
-          const chapMap = QCM_DATA[matiere];
-          Object.keys(chapMap).forEach(ch => {
-            all.push(...chapMap[ch]);
+          const map = QCM_DATA[matiere];
+          Object.keys(map).forEach(ch => {
+            all.push(...map[ch]);
           });
           return all;
         }
       }
 
       function updateInfoQcm() {
-        const questions = getAvailableQuestions();
-        const n = questions.length;
-        const bar = "Barème : 0 faute = 1 ; 1 faute = 0,5 ; 2 fautes = 0,2 ; ≥3 fautes = 0";
+        const list = getAvailableQuestions();
+        const n = list.length;
+        const bar = "Barème : 0 faute = 1 ; 1 = 0,5 ; 2 = 0,2 ; ≥3 = 0";
         infosQcmSpan.textContent = `${n} QCM dispo · ${bar}`;
       }
 
-      modeChapitrePill.addEventListener("click", () => updateMode("chapitre"));
-      modeMatierePill.addEventListener("click", () => updateMode("matiere"));
+      modeChapitrePill.onclick = () => updateMode("chapitre");
+      modeMatierePill.onclick = () => updateMode("matiere");
 
-      selectMatiere.addEventListener("change", () => {
+      selectMatiere.onchange = () => {
         updateChapitres();
         updateInfoQcm();
-      });
-      selectChapitre.addEventListener("change", updateInfoQcm);
-      nbQcmInput.addEventListener("change", () => {
-        const v = parseInt(nbQcmInput.value || "20", 10);
-        if (v < 1) nbQcmInput.value = 1;
-      });
+      };
+      selectChapitre.onchange = updateInfoQcm;
+      nbQcmInput.onchange = () => {
+        let v = parseInt(nbQcmInput.value || "20", 10);
+        if (v < 1) v = 1;
+        if (v > 50) v = 50;
+        nbQcmInput.value = v;
+      };
 
-      btnClearUser.addEventListener("click", () => {
-        if (!confirm("Effacer tout ton historique local pour ce compte ?")) return;
+      btnClearUser.onclick = () => {
+        if (!confirm("Supprimer tout ton historique local ?")) return;
         const history = loadLocal(STORAGE_KEY_HISTORY, []);
         const filtered = history.filter(h => h.user !== user.name);
         saveLocal(STORAGE_KEY_HISTORY, filtered);
-        alert("Historique effacé pour " + user.name + " (local seulement).");
+        alert("Historique local effacé.");
         render();
-      });
+      };
 
       const examCard = document.createElement("div");
       examCard.className = "card";
@@ -649,20 +582,20 @@
       historyCard.id = "history-card";
       app.appendChild(historyCard);
 
-      btnStart.addEventListener("click", () => {
-        const questionsPool = getAvailableQuestions();
-        if (!questionsPool.length) {
-          alert("Pas encore de QCM dans ce dossier (matière/chapitre).");
+      btnStart.onclick = () => {
+        const pool = getAvailableQuestions();
+        if (!pool.length) {
+          alert("Pas encore de QCM dans ce dossier.");
           return;
         }
-        const nRequested = parseInt(nbQcmInput.value || "20", 10);
-        const questions = pickRandomQuestions(questionsPool, nRequested);
-        renderExam(user, questions, {
+        const n = parseInt(nbQcmInput.value || "20", 10);
+        const selected = pickRandomQuestions(pool, n);
+        renderExam(user, selected, {
           matiere: selectMatiere.value,
           chapitre: selectChapitre.value,
           mode: currentMode
         }, examCard, historyCard);
-      });
+      };
 
       updateInfoQcm();
       renderHistory(user, historyCard);
@@ -680,36 +613,36 @@
               Mode : ${meta.mode === "chapitre" ? "Chapitre" : "Matière (chapitres mélangés)"} · ${questions.length} QCM
             </div>
           </div>
-          <div class="flex">
-            <span class="badge">En cours</span>
-          </div>
+          <span class="badge">En cours</span>
         </div>
       `;
 
       const form = document.createElement("div");
       form.id = "exam-form";
 
-      questions.forEach((q, index) => {
+      questions.forEach((q, idx) => {
         const qDiv = document.createElement("div");
         qDiv.className = "qcm-question";
         qDiv.dataset.qid = q.id;
 
         let optionsHtml = "";
-        for (const [letter, text] of Object.entries(q.options)) {
+        Object.entries(q.options).forEach(([letter, text]) => {
           optionsHtml += `
             <label>
               <input type="checkbox" name="${q.id}" value="${letter}" />
               <span><strong>${letter}.</strong> ${text}</span>
             </label>
           `;
-        }
+        });
 
         qDiv.innerHTML = `
           <div class="flex space-between">
-            <div class="qcm-title">${index + 1}. ${q.question}</div>
+            <div class="qcm-title">${idx + 1}. ${q.question}</div>
             <div class="chip-score" id="score-${q.id}">– / 1</div>
           </div>
-          <div class="text-muted">Matière : ${meta.matiere} · Chapitre : ${q.chapter || meta.chapitre} · Thème : ${q.theme}</div>
+          <div class="text-muted">
+            Matière : ${meta.matiere} · Chapitre : ${q.chapter || meta.chapitre} · Thème : ${q.theme}
+          </div>
           <div class="qcm-options mt-8">
             ${optionsHtml}
           </div>
@@ -718,36 +651,33 @@
         form.appendChild(qDiv);
       });
 
-      const actionsDiv = document.createElement("div");
-      actionsDiv.className = "mt-16 flex space-between";
-      actionsDiv.innerHTML = `
-        <button id="btn-corriger">Corriger l’épreuve</button>
-        <button class="secondary" id="btn-reset">Effacer toutes les réponses</button>
+      const actions = document.createElement("div");
+      actions.className = "mt-16 flex space-between";
+      actions.innerHTML = `
+        <button id="btn-corriger">Corriger l'épreuve</button>
+        <button id="btn-reset" class="secondary">Effacer toutes les réponses</button>
       `;
 
       examCard.appendChild(form);
-      examCard.appendChild(actionsDiv);
+      examCard.appendChild(actions);
 
-      const btnCorriger = examCard.querySelector("#btn-corriger");
-      const btnReset = examCard.querySelector("#btn-reset");
-
-      btnCorriger.addEventListener("click", () => {
+      examCard.querySelector("#btn-corriger").onclick = () => {
         corrigerEpreuve(user, questions, meta, examCard, historyCard);
-      });
+      };
 
-      btnReset.addEventListener("click", () => {
-        const checkboxes = examCard.querySelectorAll("input[type='checkbox']");
-        checkboxes.forEach(cb => cb.checked = false);
+      examCard.querySelector("#btn-reset").onclick = () => {
+        const cbs = examCard.querySelectorAll("input[type='checkbox']");
+        cbs.forEach(cb => cb.checked = false);
         questions.forEach(q => {
-          const scoreChip = document.getElementById(`score-${q.id}`);
-          const feedback = document.getElementById(`feedback-${q.id}`);
-          if (scoreChip) {
-            scoreChip.textContent = "– / 1";
-            scoreChip.className = "chip-score";
+          const s = document.getElementById(`score-${q.id}`);
+          const f = document.getElementById(`feedback-${q.id}`);
+          if (s) {
+            s.textContent = "– / 1";
+            s.className = "chip-score";
           }
-          if (feedback) feedback.textContent = "";
+          if (f) f.textContent = "";
         });
-      });
+      };
     }
 
     async function corrigerEpreuve(user, questions, meta, examCard, historyCard) {
@@ -755,34 +685,34 @@
       const totalMax = questions.length;
       const perQuestion = [];
 
-      questions.forEach(q => {
-        const checkboxes = examCard.querySelectorAll(`input[name='${q.id}']:checked`);
-        const selected = Array.from(checkboxes).map(cb => cb.value);
-        const { score, errorsCount, comment } = gradeQuestion(q, selected);
+      questions.forEach((q) => {
+        const checked = examCard.querySelectorAll(`input[name='${q.id}']:checked`);
+        const selected = Array.from(checked).map(cb => cb.value);
+        const { score, errors, comment } = gradeQuestion(q, selected);
 
         totalScore += score;
         perQuestion.push({
           id: q.id,
           question: q.question,
           score,
-          errorsCount,
+          errorsCount: errors,
           theme: q.theme,
           chapter: q.chapter,
           advice: q.advice
         });
 
-        const scoreChip = document.getElementById(`score-${q.id}`);
-        const feedback = document.getElementById(`feedback-${q.id}`);
-        if (scoreChip) {
-          scoreChip.textContent = `${score.toFixed(1)} / 1`;
-          scoreChip.className = "chip-score " + (
+        const chip = document.getElementById(`score-${q.id}`);
+        const fb = document.getElementById(`feedback-${q.id}`);
+        if (chip) {
+          chip.textContent = `${score.toFixed(1)} / 1`;
+          chip.className = "chip-score " + (
             score === 1 ? "full" :
             score === 0.5 ? "almost" :
             score === 0.2 ? "low" : "zero"
           );
         }
-        if (feedback) {
-          feedback.innerHTML = `
+        if (fb) {
+          fb.innerHTML = `
             ${comment}<br/>
             <span class="text-muted">Correction attendue : ${q.correct.join(", ")}</span>
           `;
@@ -807,26 +737,20 @@
       });
       saveLocal(STORAGE_KEY_HISTORY, history);
 
-      // Enregistrement Supabase (classement global multi-appareils)
-      await saveScoreToSupabase(
-        user.name,
-        meta.matiere,
-        totalScore,
-        totalMax,
-        percentRounded
-      );
+      // Enregistrement global (Supabase)
+      await saveScoreToSupabase(user.name, meta.matiere, totalScore, totalMax, percentRounded);
 
       renderResultCard(user, meta, totalScore, totalMax, percent, perQuestion, examCard);
       renderHistory(user, historyCard);
     }
 
     function renderResultCard(user, meta, totalScore, totalMax, percent, perQuestion, examCard) {
-      let existing = document.getElementById("result-card");
-      if (!existing) {
-        existing = document.createElement("div");
-        existing.id = "result-card";
-        existing.className = "card mt-16";
-        examCard.parentNode.insertBefore(existing, examCard.nextSibling);
+      let card = document.getElementById("result-card");
+      if (!card) {
+        card = document.createElement("div");
+        card.id = "result-card";
+        card.className = "card mt-16";
+        examCard.parentNode.insertBefore(card, examCard.nextSibling);
       }
 
       const toReview = perQuestion.filter(q => q.score < 1);
@@ -839,7 +763,7 @@
 
       let adviceHtml = "";
       if (toReview.length === 0) {
-        adviceHtml = `<p class="text-muted">Rien de particulier à revoir sur cette épreuve, c’est propre 👌</p>`;
+        adviceHtml = `<p class="text-muted">Rien de particulier à revoir sur cette épreuve, c'est propre 👌</p>`;
       } else {
         adviceHtml = `<ul class="advice-list">`;
         themes.forEach((text, theme) => {
@@ -848,19 +772,17 @@
         adviceHtml += `</ul>`;
       }
 
-      // Rang de l’utilisateur dans cette matière (moyenne de ses épreuves locales de la matière)
+      // Rang moyen (local) dans la matière
       const history = loadLocal(STORAGE_KEY_HISTORY, []);
-      const sameMatiere = history.filter(
-        h => h.user === user.name && h.matiere === meta.matiere
-      );
+      const same = history.filter(h => h.user === user.name && h.matiere === meta.matiere);
       let avgMatiere = percent;
-      if (sameMatiere.length > 0) {
-        const sum = sameMatiere.reduce((acc, h) => acc + h.percent, 0);
-        avgMatiere = sum / sameMatiere.length;
+      if (same.length > 0) {
+        const sum = same.reduce((a, h) => a + h.percent, 0);
+        avgMatiere = sum / same.length;
       }
       const rankInfo = getRankInfo(avgMatiere);
 
-      existing.innerHTML = `
+      card.innerHTML = `
         <div class="card-header">
           <div>
             <h2>Résultats – ${meta.mode === "chapitre" ? meta.chapitre : meta.matiere}</h2>
@@ -878,7 +800,7 @@
           </div>
         </div>
         <div class="mt-12">
-          <div class="text-muted">Ton rang dans ${meta.matiere} (moyenne locale de tes épreuves) :</div>
+          <div class="text-muted">Ton rang moyen dans ${meta.matiere} (local) :</div>
           <p class="rank-badge">
             <span class="rank-icon">${rankInfo.icon}</span>
             <span>${rankInfo.name}</span> · ${avgMatiere.toFixed(0)}%
@@ -903,21 +825,20 @@
           <div>
             <h2>Historique & Classement</h2>
             <div class="text-muted">
-              Historique local pour ${user.name} + classement global (tous appareils, Supabase).
+              Historique local + classement global (tous appareils, via Supabase).
             </div>
           </div>
         </div>
       `;
 
       // Historique local
-      if (userHistory.length === 0) {
+      if (!userHistory.length) {
         const p = document.createElement("p");
         p.className = "text-muted mt-8";
-        p.textContent = "Aucune épreuve locale enregistrée pour l’instant.";
+        p.textContent = "Aucune épreuve locale enregistrée pour l'instant.";
         historyCard.appendChild(p);
       } else {
         userHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
-
         const table = document.createElement("table");
         table.innerHTML = `
           <thead>
@@ -931,26 +852,28 @@
             </tr>
           </thead>
           <tbody>
-            ${userHistory.map(h => {
-              const dateObj = new Date(h.date);
-              const labelDate = dateObj.toLocaleString("fr-FR", {
-                day: "2-digit",
-                month: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit"
-              });
-              const toReview = h.perQuestion.filter(q => q.score < 1).length;
-              return `
-                <tr>
-                  <td>${labelDate}</td>
-                  <td>${h.matiere}</td>
-                  <td>${h.chapitre}</td>
-                  <td>${h.totalScore.toFixed(1)} / ${h.totalMax}</td>
-                  <td>${h.percent}%</td>
-                  <td>${toReview}</td>
-                </tr>
-              `;
-            }).join("")}
+            ${
+              userHistory.map(h => {
+                const d = new Date(h.date);
+                const label = d.toLocaleString("fr-FR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                });
+                const toRev = h.perQuestion.filter(q => q.score < 1).length;
+                return `
+                  <tr>
+                    <td>${label}</td>
+                    <td>${h.matiere}</td>
+                    <td>${h.chapitre}</td>
+                    <td>${h.totalScore.toFixed(1)} / ${h.totalMax}</td>
+                    <td>${h.percent}%</td>
+                    <td>${toRev}</td>
+                  </tr>
+                `;
+              }).join("")
+            }
           </tbody>
         `;
         historyCard.appendChild(table);
@@ -961,23 +884,24 @@
       globalDiv.className = "mt-16";
       globalDiv.innerHTML = `
         <div class="text-muted">Classement global (tous utilisateurs / tous appareils) :</div>
-        <p class="text-muted" id="global-loading">Chargement du classement...</p>
+        <p class="text-muted" id="global-loading">Chargement...</p>
       `;
       historyCard.appendChild(globalDiv);
 
       const rows = await fetchGlobalScoresFromSupabase();
-      const loadingP = globalDiv.querySelector("#global-loading");
-      if (!rows || rows.length === 0) {
-        loadingP.textContent = "Aucun score global enregistré pour l’instant.";
+      const loading = globalDiv.querySelector("#global-loading");
+
+      if (!rows.length) {
+        loading.textContent = "Aucun score global enregistré pour l'instant.";
         return;
       }
 
-      const stats = computeGlobalStatsFromRows(rows);
-      loadingP.remove();
+      loading.remove();
+      const ranking = computeGlobalStats(rows);
 
-      const rankTable = document.createElement("table");
-      rankTable.className = "mt-8";
-      rankTable.innerHTML = `
+      const table2 = document.createElement("table");
+      table2.className = "mt-8";
+      table2.innerHTML = `
         <thead>
           <tr>
             <th>Classement</th>
@@ -987,29 +911,31 @@
           </tr>
         </thead>
         <tbody>
-          ${stats.map((s, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${s.pseudo}</td>
-              <td>${s.avg.toFixed(0)}%</td>
-              <td>
-                <span class="rank-badge">
-                  <span class="rank-icon">${s.rankInfo.icon}</span>
-                  <span>${s.rankInfo.name}</span>
-                </span>
-              </td>
-            </tr>
-          `).join("")}
+          ${
+            ranking.map((r, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${r.pseudo}</td>
+                <td>${r.avg.toFixed(0)}%</td>
+                <td>
+                  <span class="rank-badge">
+                    <span class="rank-icon">${r.rankInfo.icon}</span>
+                    <span>${r.rankInfo.name}</span>
+                  </span>
+                </td>
+              </tr>
+            `).join("")
+          }
         </tbody>
       `;
-      globalDiv.appendChild(rankTable);
+      globalDiv.appendChild(table2);
     }
 
     /**********************
      * DONNÉES QCM
-     * 🔽 C’EST ICI QUE TU AJOUTES / MODIFIES LES QCM
-     * Tu peux rajouter une matière, un chapitre, ou des questions
-     * en gardant la même structure.
+     * 👉 C'EST ICI QUE TU AJOUTES / MODIFIES LES QCM
+     * - Pour ajouter un chapitre : ajoute une clé dans la matière.
+     * - Pour ajouter des QCM : ajoute un objet dans le tableau du chapitre.
      *********************/
     const QCM_DATA = {
       "Parasitologie": {
@@ -1021,13 +947,13 @@
             chapter: "Paludisme",
             options: {
               "A": "Plasmodium vivax est une espèce palustre humaine.",
-              "B": "Plasmodium knowlesi peut être responsable de paludisme chez l’humain.",
+              "B": "Plasmodium knowlesi peut infecter l’humain.",
               "C": "Plasmodium ovale est une espèce palustre humaine.",
               "D": "Plasmodium falciparum est une espèce palustre humaine.",
               "E": "Giardia lamblia est une espèce de Plasmodium."
             },
             correct: ["A","B","C","D"],
-            advice: "Retenir les principales espèces palustres humaines : P. falciparum, P. vivax, P. ovale, P. malariae, P. knowlesi (Giardia n’est pas un Plasmodium)."
+            advice: "Espèces humaines principales : P. falciparum, P. vivax, P. ovale, P. malariae, P. knowlesi."
           },
           {
             id: "palu-q2",
@@ -1035,269 +961,269 @@
             theme: "Cycle hépatique",
             chapter: "Paludisme",
             options: {
-              "A": "L’anophèle femelle inocule des sporozoïtes à l’homme lors de la piqûre.",
+              "A": "L’anophèle femelle inocule des sporozoïtes à l’homme.",
               "B": "La schizogonie érythrocytaire a lieu dans les hépatocytes.",
-              "C": "La phase hépatique est en général cliniquement silencieuse.",
-              "D": "Les hypnozoïtes hépatiques sont caractéristiques de P. falciparum.",
-              "E": "La rupture des hépatocytes libère des mérozoïtes dans la circulation sanguine."
+              "C": "La phase hépatique est cliniquement silencieuse.",
+              "D": "Les hypnozoïtes sont caractéristiques de P. falciparum.",
+              "E": "La rupture des hépatocytes libère des mérozoïtes dans le sang."
             },
             correct: ["A","C","E"],
-            advice: "Bien distinguer phase hépatique (silencieuse) et phase érythrocytaire. Les hypnozoïtes concernent P. vivax et P. ovale, pas P. falciparum."
+            advice: "Hypnozoïtes = P. vivax / P. ovale, pas P. falciparum."
           },
           {
             id: "palu-q3",
             question: "Q3. Concernant les hypnozoïtes :",
-            theme: "Hypnozoïtes / rechutes",
+            theme: "Hypnozoïtes",
             chapter: "Paludisme",
             options: {
-              "A": "Ils sont présents chez toutes les espèces de Plasmodium.",
-              "B": "Ils restent dans le foie sous forme dormante.",
-              "C": "Ils expliquent les rechutes de P. vivax et P. ovale.",
-              "D": "Ils sont responsables des accès graves immédiats à P. falciparum.",
-              "E": "Ils sont la cible d’un traitement par primaquine."
+              "A": "Présents chez toutes les espèces de Plasmodium.",
+              "B": "Formes hépatiques dormantes.",
+              "C": "Responsables des rechutes de P. vivax.",
+              "D": "Responsables des rechutes de P. ovale.",
+              "E": "Ciblés par la primaquine."
             },
-            correct: ["B","C","E"],
-            advice: "Hypnozoïtes = formes hépatiques dormantes de P. vivax / P. ovale, responsables de rechutes et ciblées par la primaquine."
+            correct: ["B","C","D","E"],
+            advice: "Hypnozoïtes = P. vivax / P. ovale, cause de rechutes tardives."
           },
           {
             id: "palu-q4",
             question: "Q4. À propos des reviviscences :",
-            theme: "Reviviscences",
+            theme: "Reviviscence",
             chapter: "Paludisme",
             options: {
-              "A": "Elles nécessitent toujours une nouvelle piqûre d’anophèle.",
-              "B": "Elles surviennent à distance de l’infection initiale.",
-              "C": "Elles sont liées à la réactivation d’hypnozoïtes hépatiques.",
-              "D": "Elles correspondent à la réactivation de formes érythrocytaires résiduelles.",
-              "E": "Elles ne concernent que Plasmodium falciparum."
+              "A": "Toujours liées à une nouvelle piqûre d’anophèle.",
+              "B": "Liées à la persistance de formes sanguines.",
+              "C": "Peuvent survenir malgré un traitement initial incomplet.",
+              "D": "S’observent surtout avec P. vivax.",
+              "E": "Correspondent à une recrudescence de la parasitémie."
             },
-            correct: ["B","D"],
-            advice: "Reviviscence = recrudescence à partir de formes sanguines persistantes. Rechute = hypnozoïtes hépatiques (P. vivax, P. ovale)."
+            correct: ["B","C","E"],
+            advice: "Reviviscence = recrudescence sanguine, pas hypnozoïtes."
           },
           {
             id: "palu-q5",
             question: "Q5. Concernant Plasmodium falciparum :",
-            theme: "P. falciparum / formes graves",
+            theme: "P. falciparum",
             chapter: "Paludisme",
             options: {
-              "A": "Il infecte des hématies de tout âge.",
-              "B": "Il est associé à une parasitémie potentiellement très élevée.",
-              "C": "Il est l’espèce la plus fréquemment responsable de formes graves.",
-              "D": "Il est caractérisé par la présence d’hypnozoïtes hépatiques.",
-              "E": "Il est strictement limité à l’Afrique subsaharienne."
+              "A": "Infecte des hématies de tout âge.",
+              "B": "Peut atteindre une parasitémie très élevée.",
+              "C": "Responsable de la majorité des formes graves.",
+              "D": "Présente des hypnozoïtes.",
+              "E": "Uniquement présent en Afrique subsaharienne."
             },
             correct: ["A","B","C"],
-            advice: "P. falciparum : hématies de tout âge, parasitémie élevée, formes graves fréquentes, pas d’hypnozoïtes et distribution surtout Afrique."
+            advice: "Pas d’hypnozoïtes pour P. falciparum. Endémie surtout Afrique mais aussi autres zones."
           },
           {
             id: "palu-q6",
-            question: "Q6. À propos de la clinique de l’accès palustre simple :",
-            theme: "Clinique accès simple",
+            question: "Q6. Clinique de l’accès palustre simple :",
+            theme: "Accès simple",
             chapter: "Paludisme",
             options: {
-              "A": "Il associe classiquement fièvre, frissons et sueurs.",
-              "B": "Un ictère isolé sans fièvre est typique d’un accès simple.",
-              "C": "Des signes digestifs (nausées, vomissements, diarrhée) peuvent être présents.",
-              "D": "La fièvre peut être irrégulière au début, sans périodicité nette.",
-              "E": "Un choc hémodynamique d’emblée est habituel dans l’accès simple."
+              "A": "Fièvre, frissons, sueurs.",
+              "B": "Peut mimer un syndrome grippal.",
+              "C": "Ictère isolé sans fièvre est typique.",
+              "D": "Signes digestifs possibles.",
+              "E": "Choc d’emblée habituel."
             },
-            correct: ["A","C","D"],
-            advice: "Accès simple : tableau fébrile souvent peu spécifique. Ictère isolé ou choc évoquent plutôt une forme grave ou autre pathologie."
+            correct: ["A","B","D"],
+            advice: "Ictère isolé ou choc = chercher forme grave ou autre étiologie."
           },
           {
             id: "palu-q7",
-            question: "Q7. Parmi les signes suivants, lesquels sont des critères de gravité du paludisme (OMS) ?",
-            theme: "Signes de gravité",
+            question: "Q7. Critères de gravité du paludisme (OMS) :",
+            theme: "Gravité",
             chapter: "Paludisme",
             options: {
-              "A": "Troubles de la conscience ou coma (Glasgow < 11).",
-              "B": "Hypoglycémie.",
-              "C": "Hémoglobine à 9 g/dL chez l’adulte.",
-              "D": "Détresse respiratoire.",
-              "E": "Parasitémie élevée chez un voyageur non immun."
+              "A": "Troubles de la conscience.",
+              "B": "Détresse respiratoire.",
+              "C": "Hypoglycémie.",
+              "D": "Anémie profonde.",
+              "E": "Fièvre isolée à 38 °C."
             },
-            correct: ["A","B","D","E"],
-            advice: "Gravité : atteinte neurologique, détresse respiratoire, hypoglycémie, anémie sévère, hyperparasitémie, etc."
+            correct: ["A","B","C","D"],
+            advice: "Signes de gravité = neurologiques, respiratoires, métaboliques, hématologiques."
           },
           {
             id: "palu-q8",
-            question: "Q8. Concernant le diagnostic biologique du paludisme :",
-            theme: "Diag biologique",
+            question: "Q8. Diagnostic biologique du paludisme :",
+            theme: "Diagnostic",
             chapter: "Paludisme",
             options: {
-              "A": "La goutte épaisse est l’examen de référence pour mettre en évidence le parasite.",
-              "B": "Le frottis sanguin mince permet d’identifier l’espèce et de quantifier la parasitémie.",
-              "C": "Un test diagnostique rapide (TDR) négatif permet d’exclure formellement un paludisme.",
-              "D": "Les prélèvements doivent idéalement être réalisés après 7 jours d’apyrexie.",
-              "E": "En cas de forte suspicion clinique, les examens doivent être répétés si le premier est négatif."
+              "A": "Goutte épaisse = examen de référence.",
+              "B": "Frottis mince = identification de l’espèce + parasitémie.",
+              "C": "TDR négatif exclut formellement le diagnostic.",
+              "D": "Les examens doivent être répétés si suspicion forte.",
+              "E": "Les prélèvements doivent être faits avant traitement."
             },
-            correct: ["A","B","E"],
-            advice: "TDR négatif n’élimine pas un paludisme si la suspicion est forte. Goutte épaisse + frottis restent les examens de référence."
+            correct: ["A","B","D","E"],
+            advice: "Un TDR négatif n’exclut pas toujours le paludisme, surtout si parasitémie faible."
           },
           {
             id: "palu-q9",
-            question: "Q9. Fièvre chez un patient revenant d’une zone d’endémie palustre :",
-            theme: "Retour de zone d’endémie",
+            question: "Q9. Fièvre au retour de zone d’endémie palustre :",
+            theme: "Retour de zone",
             chapter: "Paludisme",
             options: {
-              "A": "Tout accès fébrile doit faire considérer un paludisme jusqu’à preuve du contraire.",
-              "B": "Un délai de plus de 6 mois après le retour permet d’exclure un paludisme.",
-              "C": "L’absence de fièvre au moment de l’examen élimine un paludisme.",
-              "D": "L’hospitalisation est systématique chez tout voyageur fébrile revenant de zone d’endémie.",
-              "E": "Une chimioprophylaxie correcte n’exclut pas la possibilité d’un paludisme."
+              "A": "Tout accès fébrile doit faire évoquer un paludisme.",
+              "B": "La prophylaxie correcte élimine le risque.",
+              "C": "L’absence de fièvre au moment de l’examen élimine le paludisme.",
+              "D": "Plusieurs examens peuvent être nécessaires.",
+              "E": "L’hospitalisation est systématique pour toute fièvre."
             },
-            correct: ["A","E"],
-            advice: "Toute fièvre au retour doit faire évoquer un paludisme, même en cas de prophylaxie."
+            correct: ["A","D"],
+            advice: "La prophylaxie diminue le risque mais ne l’annule pas."
           },
           {
             id: "palu-q10",
-            question: "Q10. Concernant la prévention du paludisme chez le voyageur :",
-            theme: "Prévention / prophylaxie",
+            question: "Q10. Prévention du paludisme chez le voyageur :",
+            theme: "Prévention",
             chapter: "Paludisme",
             options: {
-              "A": "L’usage de moustiquaires imprégnées d’insecticide est recommandé.",
-              "B": "La chimioprophylaxie supprime totalement le risque de paludisme.",
-              "C": "Des molécules comme l’atovaquone-proguanil, la doxycycline ou la méfloquine peuvent être utilisées en prophylaxie selon le contexte.",
-              "D": "Certaines chimioprophylaxies doivent être poursuivies après le retour.",
-              "E": "La prévention n’est pas nécessaire pour un séjour de moins de 24 heures."
+              "A": "Moustiquaires imprégnées recommandées.",
+              "B": "Vêtements couvrants.",
+              "C": "Chimioprophylaxie selon la zone.",
+              "D": "Chimioprophylaxie rend les mesures physiques inutiles.",
+              "E": "Certaines chimioprophylaxies se poursuivent après le retour."
             },
-            correct: ["A","C","D"],
-            advice: "La prophylaxie diminue le risque mais ne l’annule pas. Toujours associée aux mesures anti-moustiques."
+            correct: ["A","B","C","E"],
+            advice: "Prévention = chimioprophylaxie + mesures anti-moustiques."
           },
           {
             id: "palu-q11",
-            question: "Q11. À propos de la prise en charge d’un accès palustre grave à P. falciparum :",
-            theme: "Traitement accès grave",
+            question: "Q11. Accès palustre grave :",
+            theme: "Accès grave",
             chapter: "Paludisme",
             options: {
-              "A": "Il s’agit d’une urgence vitale.",
-              "B": "Tout accès à P. vivax est, par définition, un accès grave.",
-              "C": "L’artésunate par voie intraveineuse est le traitement de choix.",
-              "D": "La quinine IV peut être utilisée sans surveillance de la glycémie.",
-              "E": "Un transfert en service de réanimation peut être nécessaire."
+              "A": "Urgence vitale.",
+              "B": "Traitement de choix = artésunate IV.",
+              "C": "Surveillance en milieu spécialisé.",
+              "D": "Quinine IV nécessite surveillance glycémie.",
+              "E": "Traitement ambulatoire suffisant."
             },
-            correct: ["A","C","E"],
-            advice: "Accès grave = urgence vitale. Artésunate IV recommandé, avec surveillance et réanimation si besoin."
+            correct: ["A","B","C","D"],
+            advice: "Accès grave = hospitalisation + traitement IV."
           },
           {
             id: "palu-q12",
-            question: "Q12. Concernant le traitement d’un accès simple à P. falciparum chez un adulte non enceinte :",
-            theme: "Traitement accès simple falciparum",
+            question: "Q12. Traitement de l’accès simple à P. falciparum :",
+            theme: "Traitement",
             chapter: "Paludisme",
             options: {
-              "A": "Il repose sur un traitement combiné à base d’artémisinine (CTA) per os.",
-              "B": "La durée du traitement est en général de 3 jours.",
-              "C": "Une cure de primaquine est systématiquement associée pour éliminer les hypnozoïtes.",
-              "D": "Une hospitalisation est toujours obligatoire, quel que soit le contexte.",
-              "E": "Un contrôle clinique et biologique est recommandé à 48–72 heures."
+              "A": "CTA per os 3 jours.",
+              "B": "Primaquine systématique.",
+              "C": "Surveillance clinique et biologique.",
+              "D": "Adaptation selon zone de résistance.",
+              "E": "Artésunate IV obligatoire."
             },
-            correct: ["A","B","E"],
-            advice: "CTA per os 3 jours pour l’accès simple. Pas de primaquine dans P. falciparum."
+            correct: ["A","C","D"],
+            advice: "Pas de primaquine pour P. falciparum (pas d’hypnozoïtes)."
           },
           {
             id: "palu-q13",
-            question: "Q13. Concernant les rechutes palustres :",
-            theme: "Rechutes (hypnozoïtes)",
+            question: "Q13. Rechutes palustres :",
+            theme: "Rechutes",
             chapter: "Paludisme",
             options: {
-              "A": "Elles surviennent après une phase d’apyrexie suivant un traitement initial correct.",
-              "B": "Elles concernent surtout P. vivax et P. ovale.",
-              "C": "Elles sont liées à la persistance de formes sanguines dans les hématies.",
-              "D": "Elles peuvent être prévenues par un traitement radical par primaquine.",
-              "E": "Elles surviennent uniquement pendant la chimioprophylaxie."
+              "A": "Liées aux hypnozoïtes.",
+              "B": "Concernent surtout P. vivax.",
+              "C": "Prévenues par la primaquine.",
+              "D": "Identiques aux reviviscences.",
+              "E": "Impossible après traitement curatif complet."
             },
-            correct: ["A","B","D"],
-            advice: "Rechute = hypnozoïtes hépatiques. Reviviscence = recrudescence de formes sanguines."
+            correct: ["A","B","C"],
+            advice: "Rechute ≠ reviviscence (hypnozoïtes vs formes sanguines persistantes)."
           },
           {
             id: "palu-q14",
-            question: "Q14. À propos du paludisme chez les patients splénectomisés :",
-            theme: "Situations particulières : splénectomie",
+            question: "Q14. Paludisme chez un splénectomisé :",
+            theme: "Situations particulières",
             chapter: "Paludisme",
             options: {
-              "A": "Le risque de formes graves est majoré.",
-              "B": "Aucune prophylaxie antipaludique n’est nécessaire.",
-              "C": "La rate participe à l’élimination des hématies parasitées.",
-              "D": "L’absence de rate rend la fièvre impossible.",
-              "E": "Une vaccination antipaludique spécifique est obligatoire avant le voyage."
+              "A": "Risque accru de formes graves.",
+              "B": "La rate participe à l’élimination des hématies parasitées.",
+              "C": "Prophylaxie et prévention encore plus importantes.",
+              "D": "Fièvre impossible.",
+              "E": "Pas d’indication particulière."
             },
-            correct: ["A","C"],
-            advice: "La rate est clé pour l’épuration des hématies parasitées. Splénectomisés = très haut risque."
+            correct: ["A","B","C"],
+            advice: "Splénectomisés = très haut risque."
           },
           {
             id: "palu-q15",
-            question: "Q15. Concernant le paludisme et la grossesse :",
-            theme: "Paludisme et grossesse",
+            question: "Q15. Paludisme et grossesse :",
+            theme: "Grossesse",
             chapter: "Paludisme",
             options: {
-              "A": "La femme enceinte est plus à risque de formes graves de paludisme.",
-              "B": "Un paludisme congénital est possible.",
-              "C": "Certaines molécules de prophylaxie ou de traitement sont contre-indiquées au 1er trimestre.",
-              "D": "La chimioprophylaxie n’est pas recommandée pendant la grossesse.",
-              "E": "Il est préférable d’éviter, si possible, les séjours en zone d’endémie pendant la grossesse."
+              "A": "La femme enceinte est plus à risque de formes graves.",
+              "B": "Paludisme congénital possible.",
+              "C": "Certaines molécules contre-indiquées.",
+              "D": "Aucune contre-indication à voyager en zone d’endémie.",
+              "E": "Prévention renforcée recommandée."
             },
             correct: ["A","B","C","E"],
-            advice: "Grossesse = terrain à risque. Adapter prophylaxie/traitement et éviter les zones de forte transmission si possible."
+            advice: "Grossesse = terrain fragile, éviter si possible les zones à forte transmission."
           },
           {
             id: "palu-q16",
-            question: "Q16. Concernant Plasmodium malariae :",
+            question: "Q16. Plasmodium malariae :",
             theme: "P. malariae",
             chapter: "Paludisme",
             options: {
-              "A": "Il donne typiquement une fièvre tierce (48 h).",
-              "B": "Il peut être responsable de néphropathies chroniques.",
-              "C": "Il présente des hypnozoïtes hépatiques.",
-              "D": "Il est responsable de parasitémies très élevées comparables à P. falciparum.",
-              "E": "Il peut persister de nombreuses années chez un même patient."
+              "A": "Fièvre quartane typique.",
+              "B": "Hypnozoïtes hépatiques.",
+              "C": "Néphropathies chroniques possibles.",
+              "D": "Évolution prolongée possible.",
+              "E": "Parasitémie toujours très élevée."
             },
-            correct: ["B","E"],
-            advice: "P. malariae : fièvre quartane (72 h), évolution prolongée, néphropathies possibles."
+            correct: ["A","C","D"],
+            advice: "P. malariae = paludisme chronique, fièvre quartane, atteinte rénale possible."
           },
           {
             id: "palu-q17",
-            question: "Q17. À propos de la périodicité fébrile dans le paludisme :",
-            theme: "Périodicité fébrile",
+            question: "Q17. Périodicité fébrile :",
+            theme: "Périodicité",
             chapter: "Paludisme",
             options: {
-              "A": "Les accès de P. falciparum sont souvent irréguliers au début.",
-              "B": "Une fièvre tierce (48 h) est typique de P. vivax et P. ovale.",
-              "C": "Une périodicité parfaitement régulière est indispensable au diagnostic.",
-              "D": "La prise d’antipyrétiques peut masquer la périodicité des accès.",
-              "E": "P. malariae donne classiquement une fièvre quartane (72 h)."
+              "A": "Fièvre tierce pour P. vivax/ovale.",
+              "B": "Fièvre quartane pour P. malariae.",
+              "C": "Accès souvent irréguliers pour P. falciparum.",
+              "D": "Périodicité parfaitement régulière indispensable au diagnostic.",
+              "E": "Antipyrétiques peuvent masquer la périodicité."
             },
-            correct: ["A","B","D","E"],
-            advice: "La périodicité aide mais n’est ni constante ni indispensable, surtout si antipyrétiques."
+            correct: ["A","B","C","E"],
+            advice: "La périodicité n’est pas toujours évidente en pratique."
           },
           {
             id: "palu-q18",
-            question: "Q18. Concernant les tests diagnostiques rapides (TDR) du paludisme :",
-            theme: "TDR paludisme",
+            question: "Q18. TDR du paludisme :",
+            theme: "TDR",
             chapter: "Paludisme",
             options: {
-              "A": "Ils détectent le plus souvent des antigènes de P. falciparum.",
-              "B": "Ils sont sensibles à 100 % quelle que soit la parasitémie.",
-              "C": "Ils peuvent rester positifs plusieurs jours après la clairance parasitaire.",
-              "D": "Ils permettent de quantifier la parasitémie.",
-              "E": "Ils doivent idéalement être complétés par une goutte épaisse et un frottis sanguin."
+              "A": "Détectent des antigènes parasitaires.",
+              "B": "Sensibilité parfaite quelle que soit la parasitémie.",
+              "C": "Ne permettent pas de quantifier la parasitémie.",
+              "D": "Peuvent rester positifs après guérison.",
+              "E": "Complètent goutte épaisse + frottis."
             },
-            correct: ["A","C","E"],
-            advice: "Les TDR sont utiles mais imparfaits : pas de quantification, possible persistance de positivité après traitement."
+            correct: ["A","C","D","E"],
+            advice: "TDR utiles mais ne remplacent pas le frottis."
           },
           {
             id: "palu-q19",
-            question: "Q19. Traitement des infections à P. vivax ou P. ovale :",
+            question: "Q19. Traitement P. vivax / P. ovale :",
             theme: "Traitement vivax/ovale",
             chapter: "Paludisme",
             options: {
-              "A": "Un CTA per os est utilisé pour traiter la phase sanguine.",
-              "B": "La primaquine permet d’éradiquer les hypnozoïtes hépatiques.",
-              "C": "La primaquine est contre-indiquée en cas de déficit en G6PD.",
-              "D": "En l’absence de traitement par primaquine, le risque de rechute persiste.",
-              "E": "Le schéma thérapeutique est strictement identique à celui d’un accès à P. falciparum sans adaptation."
+              "A": "CTA pour phase sanguine.",
+              "B": "Primaquine pour hypnozoïtes.",
+              "C": "Vérifier G6PD avant primaquine.",
+              "D": "Sans primaquine, risque de rechute.",
+              "E": "Schéma identique à P. falciparum."
             },
             correct: ["A","B","C","D"],
-            advice: "P. vivax/ovale : traiter phase sanguine + traitement radical (primaquine) si G6PD OK, sinon rechutes."
+            advice: "Traitement radical = élimination des hypnozoïtes par primaquine."
           },
           {
             id: "palu-q20",
@@ -1305,14 +1231,14 @@
             theme: "Épidémiologie",
             chapter: "Paludisme",
             options: {
-              "A": "P. falciparum prédomine en Afrique subsaharienne.",
-              "B": "P. vivax est fréquent en Asie et en Amérique latine.",
-              "C": "Le paludisme d’importation en France est majoritairement dû à P. falciparum.",
-              "D": "L’absence totale d’anophèles en Europe rend impossible toute transmission autochtone.",
-              "E": "Le paludisme est une maladie à déclaration obligatoire dans plusieurs pays, dont la France."
+              "A": "P. falciparum prédomine en Afrique.",
+              "B": "P. vivax fréquent en Asie et Amérique latine.",
+              "C": "Paludisme d’importation en France principalement à P. falciparum.",
+              "D": "Le paludisme est éradiqué dans le monde.",
+              "E": "Maladie à déclaration obligatoire dans plusieurs pays."
             },
             correct: ["A","B","C","E"],
-            advice: "Bien connaître la répartition des espèces et le contexte de paludisme d’importation."
+            advice: "Connaître les zones d’endémie et les espèces dominantes."
           }
         ],
         "Toxoplasmose": [],
@@ -1322,620 +1248,325 @@
       },
       "Mycologie": {
         "Chapitre 1": [],
-        "Chapitre 2": [{
-  id: "myco2-q1",
-  question: "Q1. Concernant les levures du genre Candida :",
-  theme: "Candida – généralités",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Elles font partie de la flore commensale cutanéo-muqueuse.",
-    "B": "Elles sont systématiquement pathogènes lorsqu’on les retrouve.",
-    "C": "Elles peuvent provoquer des candidoses superficielles en cas de facteurs favorisants.",
-    "D": "Elles sont des champignons filamenteux stricts.",
-    "E": "Elles peuvent provoquer une balanite infectieuse."
-  },
-  correct: ["A","C","E"],
-  advice: "Candida = levure commensale opportuniste. Pas un filamenteux. Pathogène si déséquilibre (humidité, antibiotiques, immunodépression)."
-},
-{
-  id: "myco2-q2",
-  question: "Q2. Facteurs favorisants des candidoses superficielles :",
-  theme: "Candida – facteurs favorisants",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Diabète",
-    "B": "Macération",
-    "C": "Antibiothérapie prolongée",
-    "D": "Corticothérapie inhalée",
-    "E": "Exposition solaire intense"
-  },
-  correct: ["A","B","C","D"],
-  advice: "Tous les facteurs de rupture d’équilibre flore/immunité favorisent Candida."
-},
-{
-  id: "myco2-q3",
-  question: "Q3. Concernant Malassezia spp :",
-  theme: "Malassezia – peau glabre",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "C’est une levure lipophile.",
-    "B": "Elle est favorisée par les corps gras appliqués sur la peau.",
-    "C": "Elle provoque le pityriasis versicolor.",
-    "D": "Elle est fluorescente en Wood dans la majorité des cas.",
-    "E": "Elle appartient aux dermatophytes."
-  },
-  correct: ["A","B","C"],
-  advice: "Malassezia = levure lipophile → macules dépigmentées. Pas un dermatophyte."
-},
-{
-  id: "myco2-q4",
-  question: "Q4. À propos des dermatophytes :",
-  theme: "Dermatophytes – généralités",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Ce sont des champignons kératinophiles.",
-    "B": "Ils atteignent peau, ongles, cheveux.",
-    "C": "Ils sont dimorphiques.",
-    "D": "Ils provoquent souvent des teignes.",
-    "E": "Ils appartiennent principalement aux genres Trichophyton, Microsporum et Epidermophyton."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Dermatophytes = filamenteux kératinophiles. Jamais dimorphiques."
-},
-{
-  id: "myco2-q5",
-  question: "Q5. Clinique d’une dermatophytose cutanée classique (herpès circiné) :",
-  theme: "Dermatophytes – peau glabre",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Plaques érythémato-squameuses centrifuges.",
-    "B": "Prurit fréquent.",
-    "C": "Centre souvent plus clair.",
-    "D": "Lésions souvent annulaires.",
-    "E": "Atteinte préférentielle des muqueuses profondes."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Herpès circiné = lésion annulaire centrifuge avec bord actif squameux."
-},
-{
-  id: "myco2-q6",
-  question: "Q6. À propos des teignes tondantes :",
-  theme: "Teignes – cuir chevelu",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Elles sont dues aux dermatophytes.",
-    "B": "Elles provoquent une alopécie squameuse.",
-    "C": "La teigne microsporique est souvent Wood positive.",
-    "D": "La teigne trichophytique donne de petites plaques multiples.",
-    "E": "Elles sont causées par Malassezia."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Teignes = dermatophytes. Microsporique = grandes plaques + Wood+. Trichophytique = plaques petites, multiples."
-},
-{
-  id: "myco2-q7",
-  question: "Q7. À propos des onychomycoses :",
-  theme: "Ongles – dermatophytes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Les onychomycoses à dermatophytes commencent le plus souvent au bord distal.",
-    "B": "Elles donnent un ongle épaissi et jaune.",
-    "C": "Le prélèvement doit se faire au niveau de la bordure active.",
-    "D": "Les onychomycoses à Candida sont toujours distales.",
-    "E": "Les onychomycoses à Candida sont favorisées par l’humidité et les périonyxis."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Dermatophytes = distolatéral. Candida = proximal + périonyxis."
-},
-{
-  id: "myco2-q8",
-  question: "Q8. Concernant le diagnostic mycologique :",
-  theme: "Diagnostic – prélèvements",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Le scotch-test est utilisé pour Malassezia.",
-    "B": "L’examen direct recherche des filaments ou levures.",
-    "C": "La culture identifie l’espèce.",
-    "D": "La lumière de Wood aide dans certaines teignes.",
-    "E": "Le prélèvement doit toujours être fait après antifongiques."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Jamais prélever sous antifongique récent (risque de faux négatif)."
-},
-{
-  id: "myco2-q9",
-  question: "Q9. Facteurs orientant vers une dermatophytose plutôt qu’une candidose :",
-  theme: "Différenciation Candida / dermatophytes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Atteinte centrale saine avec bordure active.",
-    "B": "Prurit.",
-    "C": "Atteinte des phanères.",
-    "D": "Présence d’un périonyxis rouge et douloureux.",
-    "E": "Présence de grandes plaques annulaire."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Périonyxis = plutôt Candida."
-},
-{
-  id: "myco2-q10",
-  question: "Q10. À propos du pityriasis versicolor :",
-  theme: "Malassezia – pityriasis versicolor",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Il est dû à Malassezia furfur.",
-    "B": "Les lésions sont hypopigmentées ou hyperpigmentées.",
-    "C": "Les lésions ne sont jamais prurigineuses.",
-    "D": "Les récidives sont fréquentes.",
-    "E": "Le diagnostic peut être confirmé par scotch-test."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Prurit possible mais discret. Malassezia = récidives fréquentes."
-}{
-  id: "myco2-q11",
-  question: "Q11. Concernant la candidose buccale :",
-  theme: "Candida – muqueuse orale",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Elle peut se manifester par un muguet.",
-    "B": "Elle est favorisée par les corticoïdes inhalés.",
-    "C": "Elle se traduit toujours par une langue noire.",
-    "D": "Elle peut être associée à une dysphagie en cas d’atteinte œsophagienne.",
-    "E": "Elle peut survenir sous antibiothérapie prolongée."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Candidoses buccales : muguet, perlèches, facteurs favorisants = corticoïdes, antibiotiques, immunodépression."
-},
-{
-  id: "myco2-q12",
-  question: "Q12. Perlèche (chéilite angulaire) :",
-  theme: "Candida – perlèche",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Souvent due à Candida.",
-    "B": "Favorisée par la macération au niveau des commissures.",
-    "C": "Toujours associée à une infection à dermatophytes.",
-    "D": "S’observe chez les porteurs de prothèses dentaires.",
-    "E": "Est systématiquement bilatérale."
-  },
-  correct: ["A","B","D"],
-  advice: "Perlèche = coin de bouche, macération, Candida, parfois unilatérale."
-},
-{
-  id: "myco2-q13",
-  question: "Q13. Diagnostic d’une teigne :",
-  theme: "Teignes – diagnostic",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "La lumière de Wood est utile pour certaines teignes microsporiques.",
-    "B": "L’examen direct recherche des filaments septés.",
-    "C": "La culture précise l’espèce.",
-    "D": "Le prélèvement doit se faire au niveau des cheveux cassés.",
-    "E": "Un traitement antibiotique est indispensable."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Teignes = dermatophytes → filaments septés. Jamais d’antibiotiques."
-},
-{
-  id: "myco2-q14",
-  question: "Q14. Teigne inflammatoire (kérion) :",
-  theme: "Teignes – kérion",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Souvent due à des dermatophytes zoophiles.",
-    "B": "Responsable de plaques inflammatoires suppurées.",
-    "C": "Toujours chronique et indolore.",
-    "D": "Peut laisser une alopécie cicatricielle.",
-    "E": "Peut nécessiter un traitement antifongique systémique."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Kérion = inflammatoire, urgent, risque cicatrice → traitement systémique."
-},
-{
-  id: "myco2-q15",
-  question: "Q15. Dermatophytoses du pied (pied d’athlète) :",
-  theme: "Dermatophytes – pied",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Favorisées par la macération.",
-    "B": "Souvent interdigitoplantaires.",
-    "C": "Peuvent s’étendre aux ongles.",
-    "D": "Provoquées par Candida albicans.",
-    "E": "Correspondent souvent à Trichophyton rubrum."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Pied d’athlète = dermatophytes, surtout T. rubrum, jamais Candida."
-},
-{
-  id: "myco2-q16",
-  question: "Q16. Tinea corporis (herpès circiné) :",
-  theme: "Dermatophytes – peau glabre",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Lésion annulaire centrifuge.",
-    "B": "Bordure érythématique active.",
-    "C": "Centre sain relatif.",
-    "D": "Due à des levures lipophiles.",
-    "E": "Peut être transmise par animaux domestiques."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Souvent d’origine zoophile (Microsporum canis)."
-},
-{
-  id: "myco2-q17",
-  question: "Q17. Concernant les mycoses des plis :",
-  theme: "Intertrigos – Candida / dermatophytes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Les intertrigos à Candida sont très fréquents.",
-    "B": "On peut y observer des lésions satellites.",
-    "C": "La macération est un facteur favorisant majeur.",
-    "D": "La lumière de Wood est indispensable.",
-    "E": "La topographie peut aider à distinguer dermatophytes et Candida."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Candida → plis humides rouges + satellites. Wood inutile."
-},
-{
-  id: "myco2-q18",
-  question: "Q18. Différenciation dermatophytose vs candidose des plis :",
-  theme: "Diagnostic différentiel – plis",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Les lésions satellites orientent vers Candida.",
-    "B": "Un bord actif centrifuge oriente vers dermatophyte.",
-    "C": "La chaleur et humidité favorisent les deux.",
-    "D": "Les dermatophytes épargnent toujours les plis.",
-    "E": "Candida peut entraîner un érythème vif bien limité."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Dermatophytes aussi possibles dans les plis → inguino-crural."
-},
-{
-  id: "myco2-q19",
-  question: "Q19. Onychomycose à Candida :",
-  theme: "Ongles – Candida",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Se rencontre surtout aux mains.",
-    "B": "S’accompagne d’un périonyxis.",
-    "C": "Est favorisée par le contact humide répété.",
-    "D": "Débute préférentiellement au bord proximal.",
-    "E": "Provoque toujours un Wood positif."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Candida = proximal + périonyxis. Wood = inutile."
-},
-{
-  id: "myco2-q20",
-  question: "Q20. Transmission des dermatophytes :",
-  theme: "Dermatophytes – transmission",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Peut être anthropophile.",
-    "B": "Peut être zoophile.",
-    "C": "Peut être tellurique.",
-    "D": "Peut être favorisée par contact peau/sol contaminé.",
-    "E": "Impossible entre humains."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Transmission très variée selon l’espèce (T. rubrum = anthropophile, M. canis = zoophile…)."
-}{
-  id: "myco2-q21",
-  question: "Q21. Dermatophytoses inguino-crurales :",
-  theme: "Dermatophytes – plis inguinaux",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Souvent dues à Trichophyton rubrum.",
-    "B": "Atteignent en général un seul côté.",
-    "C": "Présentent une bordure active surélevée.",
-    "D": "S’accompagnent de lésions satellites comme Candida.",
-    "E": "Sont favorisées par la macération et la transpiration."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Intertrigo inguinal = dermatophyte (T. rubrum), bordure active, unilatéral, pas de satellites."
-},
-{
-  id: "myco2-q22",
-  question: "Q22. Diagnostic direct des dermatophytes :",
-  theme: "Diagnostic labo",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Recherche de filaments hyalins septés.",
-    "B": "Permet un diagnostic rapide en quelques minutes.",
-    "C": "Le prélèvement doit inclure des squames récentes.",
-    "D": "Un examen direct négatif élimine totalement le diagnostic.",
-    "E": "La culture permet d’identifier l’espèce."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Direct = rapide mais pas 100% sensible. Culture = identification."
-},
-{
-  id: "myco2-q23",
-  question: "Q23. Pityriasis versicolor :",
-  theme: "Malassezia",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Due à une levure lipophile.",
-    "B": "Provoque des macules hypopigmentées.",
-    "C": "Peut fluorescer en jaune-orangé à la lampe de Wood.",
-    "D": "Est souvent récidivant.",
-    "E": "Se traite uniquement par voie systémique."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Malassezia → localisations séborrhéiques, récidives fréquentes."
-},
-{
-  id: "myco2-q24",
-  question: "Q24. À propos de Malassezia :",
-  theme: "Levures lipophiles",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Fait partie de la flore cutanée.",
-    "B": "Responsable du pityriasis versicolor.",
-    "C": "Peut entraîner des folliculites.",
-    "D": "Pousse sur milieux classiques sans lipides.",
-    "E": "Apprécie les zones riches en sébum."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Malassezia = levure lipophile → nécessite lipides en culture."
-},
-{
-  id: "myco2-q25",
-  question: "Q25. Onychomycose dermatophytique :",
-  theme: "Ongles – dermatophytes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Souvent causée par Trichophyton rubrum.",
-    "B": "Débute typiquement au bord distal.",
-    "C": "Peut entraîner une onychodystrophie.",
-    "D": "Toujours indolore.",
-    "E": "Est favorisée par les traumatismes répétés du pied."
-  },
-  correct: ["A","B","C","E"],
-  advice: "La forme disto-latérale est la plus fréquente."
-},
-{
-  id: "myco2-q26",
-  question: "Q26. À propos des levures Candida :",
-  theme: "Candida – généralités",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Peuvent se présenter en blastospores et pseudohyphes.",
-    "B": "Font partie de la flore commensale.",
-    "C": "Peuvent causer des infections superficielles.",
-    "D": "Se transmettent exclusivement par voie sexuelle.",
-    "E": "Peuvent devenir pathogènes en cas d’immunodépression."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Candida = opportunistes, souvent endogènes."
-},
-{
-  id: "myco2-q27",
-  question: "Q27. Intertrigo candidosique :",
-  theme: "Candida – plis",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Érythème vif brillant.",
-    "B": "Présence de fissures possibles.",
-    "C": "Présence fréquente de satellites.",
-    "D": "Souvent dans les plis sous-mammaires.",
-    "E": "Jamais favorisé par le diabète."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Candida = plis humides, satellites, diabète = facteur fortement favorisant."
-},
-{
-  id: "myco2-q28",
-  question: "Q28. Pityriasis versicolor — diagnostic direct :",
-  theme: "Malassezia – examen direct",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "On y observe l’aspect « spaghetti et boulettes ».",
-    "B": "Les hyphes sont courts.",
-    "C": "Les levures sont nombreuses.",
-    "D": "La culture est facile sur milieu standard.",
-    "E": "L’examen direct suffit souvent au diagnostic."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Culture difficile sans lipides → examen direct clé."
-},
-{
-  id: "myco2-q29",
-  question: "Q29. Facteurs favorisant les candidoses superficielles :",
-  theme: "Candida – facteurs",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Diabète.",
-    "B": "Obésité.",
-    "C": "Antibiothérapie.",
-    "D": "Port prolongé de couches.",
-    "E": "Terrain sec et kératosique."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Tous favorisent humidité ou immunodépression locale."
-},
-{
-  id: "myco2-q30",
-  question: "Q30. À propos des infections fongiques de la peau :",
-  theme: "Résumé général",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Les dermatophytes digèrent la kératine.",
-    "B": "Candida touche préférentiellement les plis.",
-    "C": "Malassezia touche les zones séborrhéiques.",
-    "D": "Wood positif dans certaines teignes.",
-    "E": "Candida donne typiquement un bord actif centrifuge."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Résumer les patterns : dermatophytes = kératine ; Candida = plis ; Malassezia = sébum."
-}{
-  id: "myco2-q31",
-  question: "Q31. Teignes du cuir chevelu :",
-  theme: "Teignes – généralités",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Ce sont des dermatophytoses du cuir chevelu.",
-    "B": "Elles surviennent surtout chez l’enfant.",
-    "C": "Elles peuvent être inflammatoires (kérion).",
-    "D": "La lampe de Wood peut aider au diagnostic.",
-    "E": "Le traitement local seul est toujours suffisant."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Teignes = traitement systémique obligatoire."
-},
-{
-  id: "myco2-q32",
-  question: "Q32. Teignes — types de parasitisme du cheveu :",
-  theme: "Teignes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Ectothrix = spores autour du cheveu.",
-    "B": "Endothrix = spores à l’intérieur du cheveu.",
-    "C": "Microsporum donne plutôt un parasitisme endothrix.",
-    "D": "Trichophyton tonsurans donne un parasitisme endothrix.",
-    "E": "Le type de parasitisme peut aider à identifier l'espèce."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Microsporum = ectothrix."
-},
-{
-  id: "myco2-q33",
-  question: "Q33. Kérion :",
-  theme: "Teignes inflammatoires",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Forme inflammatoire de teigne.",
-    "B": "Peut simuler un abcès bactérien.",
-    "C": "Peut évoluer vers l'alopécie cicatricielle.",
-    "D": "Se traite uniquement par antifongiques locaux.",
-    "E": "Peut s’accompagner d’adénopathies."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Traitement = systémique + éviter les erreurs de diagnostic."
-},
-{
-  id: "myco2-q34",
-  question: "Q34. Diagnostic d’une teigne :",
-  theme: "Diagnostic teigne",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Examen direct indispensable.",
-    "B": "Culture permet l’identification.",
-    "C": "La lampe de Wood peut détecter certaines teignes microsporées.",
-    "D": "La PCR n’a aucune utilité.",
-    "E": "La teigne doit être recherchée chez l’entourage."
-  },
-  correct: ["A","B","C","E"],
-  advice: "PCR utile mais pas toujours dispo ; contagiosité importante."
-},
-{
-  id: "myco2-q35",
-  question: "Q35. Intertrigo des orteils (pied d’athlète) :",
-  theme: "Dermatophytes – intertrigo",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Due le plus souvent à Trichophyton rubrum.",
-    "B": "Favorisé par la macération.",
-    "C": "Présente souvent des fissures interdigitale.",
-    "D": "Le diagnostic direct recherche des filaments septés.",
-    "E": "La présence de satellites oriente vers ce diagnostic."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Satellites = Candida, pas dermatophytes."
-},
-{
-  id: "myco2-q36",
-  question: "Q36. Confusions fréquentes : dermatophytes vs Candida :",
-  theme: "Différentiel",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Dermatophytes → bordure active centrifuge.",
-    "B": "Candida → plis humides avec satellites.",
-    "C": "Dermatophytes → atteinte préférentielle des ongles des orteils.",
-    "D": "Candida → ongles des mains surtout chez femmes.",
-    "E": "Dermatophytes → intertrigo avec pustules satellites."
-  },
-  correct: ["A","B","C","D"],
-  advice: "Retenir les patterns visuels clés."
-},
-{
-  id: "myco2-q37",
-  question: "Q37. Traitement des onychomycoses :",
-  theme: "Traitement",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Terbinafine per os pour les dermatophytes.",
-    "B": "Itraconazole per os possible.",
-    "C": "Le traitement local seul est efficace pour toutes les formes.",
-    "D": "La durée du traitement est longue.",
-    "E": "L’identification de l’espèce guide le choix."
-  },
-  correct: ["A","B","D","E"],
-  advice: "Topique seul insuffisant sauf atteintes très limitées."
-},
-{
-  id: "myco2-q38",
-  question: "Q38. Dermatomycoses superficielles – clinique :",
-  theme: "Dermatophytes",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Érythème centrifuge à bordure active.",
-    "B": "Prurit fréquent.",
-    "C": "Desquamation périphérique.",
-    "D": "Satellites évocateurs de dermatophytes.",
-    "E": "Peuvent toucher tout territoire kératinisé."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Bordure active = très évocateur."
-},
-{
-  id: "myco2-q39",
-  question: "Q39. Pityriasis versicolor – clinique :",
-  theme: "Malassezia – clinique",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Macules hypopigmentées ou hyperpigmentées.",
-    "B": "Taches squameuses fines.",
-    "C": "Atteinte du tronc et des épaules.",
-    "D": "Prurit intense.",
-    "E": "Tendance à la récidive."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Souvent asymptomatique ou prurit léger."
-},
-{
-  id: "myco2-q40",
-  question: "Q40. Traitement du pityriasis versicolor :",
-  theme: "Traitement Malassezia",
-  chapter: "Chapitre 2",
-  options: {
-    "A": "Antifongiques locaux type kétoconazole.",
-    "B": "Possibilité de traitement systémique en cas de formes étendues.",
-    "C": "Récidives fréquentes nécessitant parfois un entretien.",
-    "D": "Une seule application locale suffit toujours.",
-    "E": "Éviter les huiles qui favorisent Malassezia."
-  },
-  correct: ["A","B","C","E"],
-  advice: "Formes récidivantes = prophylaxie locale."
-}]
+        "Chapitre 2": [
+          {
+            id: "myco2-q1",
+            question: "Q1. Les dermatophytes :",
+            theme: "Dermatophytes – généralités",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Sont des champignons filamenteux kératinophiles.",
+              "B": "Infectent peau, cheveux, ongles.",
+              "C": "Sont dimorphiques.",
+              "D": "Appartiennent surtout aux genres Trichophyton, Microsporum, Epidermophyton.",
+              "E": "Colonisent surtout les muqueuses profondes."
+            },
+            correct: ["A","B","D"],
+            advice: "Dermatophytes = filamenteux kératinophiles des téguments (peau, phanères)."
+          },
+          {
+            id: "myco2-q2",
+            question: "Q2. Pityriasis versicolor :",
+            theme: "Malassezia – pityriasis versicolor",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Lié à une levure lipophile du genre Malassezia.",
+              "B": "Atteint volontiers le tronc et les épaules.",
+              "C": "Donne des macules hypo- ou hyperpigmentées.",
+              "D": "Est toujours fortement prurigineux.",
+              "E": "A des récidives fréquentes."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Prurit souvent discret voire absent, récidives fréquentes, zones séborrhéiques."
+          },
+          {
+            id: "myco2-q3",
+            question: "Q3. Intertrigo candidosique :",
+            theme: "Candida – plis",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Érythème vif et luisant des plis.",
+              "B": "Présence fréquente de lésions satellites.",
+              "C": "Favorisé par la macération.",
+              "D": "Atteint volontiers plis sous-mammaires.",
+              "E": "Épargne systématiquement les plis inguinaux."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Satellites + macération = très évocateur de Candida."
+          },
+          {
+            id: "myco2-q4",
+            question: "Q4. Onychomycose à dermatophytes :",
+            theme: "Ongles – dermatophytes",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Souvent due à Trichophyton rubrum.",
+              "B": "Débute en général au bord libre distal.",
+              "C": "Épaissit et jaunit l’ongle.",
+              "D": "Touche surtout les ongles des orteils.",
+              "E": "Est typiquement proximale avec périonyxis."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Forme disto-latérale sous-unguéale = la plus fréquente pour les dermatophytes."
+          },
+          {
+            id: "myco2-q5",
+            question: "Q5. Onychomycose à Candida :",
+            theme: "Ongles – Candida",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Touche surtout les ongles des mains.",
+              "B": "S’accompagne fréquemment d’un périonyxis rouge et douloureux.",
+              "C": "Débute préférentiellement au bord proximal.",
+              "D": "Favorisée par l’humidité permanente.",
+              "E": "Wood positif constant."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Candida = mains, périonyxis, humidité ; pas de Wood."
+          },
+          {
+            id: "myco2-q6",
+            question: "Q6. Teigne tondante microsporique :",
+            theme: "Teignes – microsporique",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Due à un dermatophyte du genre Microsporum.",
+              "B": "Donne une grande plaque alopécique unique.",
+              "C": "Souvent fluorescente en vert à la lampe de Wood.",
+              "D": "Atteint surtout l’adulte vieillissant.",
+              "E": "Requiert un traitement antifongique systémique."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Teignes = surtout chez l’enfant, traitement systémique obligatoire."
+          },
+          {
+            id: "myco2-q7",
+            question: "Q7. Herpès circiné (tinea corporis) :",
+            theme: "Dermatophytes – peau glabre",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Plaque annulaire avec bordure active.",
+              "B": "Centre plus clair.",
+              "C": "Desquamation périphérique.",
+              "D": "Due le plus souvent à des levures.",
+              "E": "Peut être d’origine zoophile."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Lésions annulaires centrifuges typiques des dermatophytes, parfois d’origine animale."
+          },
+          {
+            id: "myco2-q8",
+            question: "Q8. Pityriasis versicolor – examen direct :",
+            theme: "Malassezia – examen direct",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Aspect en « spaghetti et boulettes » (hyphes courts + levures).",
+              "B": "Hyphes longs septés.",
+              "C": "Levures nombreuses.",
+              "D": "Examen direct souvent suffisant au diagnostic.",
+              "E": "Culture facile sur milieu standard sans lipides."
+            },
+            correct: ["A","C","D"],
+            advice: "Malassezia = levure lipophile, culture délicate sans ajout de lipides."
+          },
+          {
+            id: "myco2-q9",
+            question: "Q9. Intertrigo dermatophytique inguino-crural :",
+            theme: "Dermatophytes – plis inguinaux",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Souvent dû à Trichophyton rubrum.",
+              "B": "Souvent unilatéral.",
+              "C": "Bordure active surélevée.",
+              "D": "Nombreuses lésions satellites périphériques.",
+              "E": "Favorisé par macération et transpiration."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Satellites = plutôt Candida. Intertrigo inguinal = souvent dermatophyte unilatéral."
+          },
+          {
+            id: "myco2-q10",
+            question: "Q10. Lumière de Wood :",
+            theme: "Outils diag",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Utile pour certaines teignes microsporiques.",
+              "B": "Peut montrer une fluorescence vert-jaune.",
+              "C": "Indispensable pour le diagnostic de toutes les mycoses.",
+              "D": "Parfois utile dans le pityriasis versicolor.",
+              "E": "Toujours positive dans les candidoses."
+            },
+            correct: ["A","B","D"],
+            advice: "Wood = aide, pas obligatoire. Candidoses = pas de fluorescence spécifique."
+          },
+          {
+            id: "myco2-q11",
+            question: "Q11. Candidose buccale (muguet) :",
+            theme: "Candida – bouche",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Plaques blanchâtres crémeuses.",
+              "B": "Se détachent en laissant une muqueuse érythémateuse.",
+              "C": "Favorisée par antibiothérapie et corticoïdes inhalés.",
+              "D": "Typique chez le nourrisson.",
+              "E": "Toujours signe d’immunodépression sévère."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Muguet = classique nourrisson / terrain fragilisé, pas forcément SIDA."
+          },
+          {
+            id: "myco2-q12",
+            question: "Q12. Perlèche (chéilite angulaire) :",
+            theme: "Candida – perlèche",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Atteint les commissures labiales.",
+              "B": "Favorisée par macération (salive, prothèses).",
+              "C": "Souvent due à Candida.",
+              "D": "Peut être unilatérale ou bilatérale.",
+              "E": "Toujours d’origine bactérienne."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Penser mycose + facteurs mécaniques (prothèses, bavage)."
+          },
+          {
+            id: "myco2-q13",
+            question: "Q13. Pied d’athlète (intertrigo inter-orteils) :",
+            theme: "Dermatophytes – pied",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Favorisé par la macération dans les chaussures fermées.",
+              "B": "Souvent dû à Trichophyton rubrum.",
+              "C": "Peut s’étendre à la plante et aux ongles.",
+              "D": "Présente fissures et prurit.",
+              "E": "Est typiquement une candidose."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Pied d’athlète = dermatophytes, pas Candida."
+          },
+          {
+            id: "myco2-q14",
+            question: "Q14. Diagnostic mycologique d’une dermatophytose :",
+            theme: "Diagnostic labo",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Examen direct à la potasse.",
+              "B": "Recherche de filaments hyalins septés.",
+              "C": "Culture sur milieux spécifiques.",
+              "D": "Prélèvement sur bordure active.",
+              "E": "Antibiothérapie préalable recommandée."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Éviter antifongiques avant prélèvement, pas d’antibiotiques pour une mycose."
+          },
+          {
+            id: "myco2-q15",
+            question: "Q15. Malassezia :",
+            theme: "Malassezia – généralités",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Levure lipophile de la flore cutanée normale.",
+              "B": "Responsable de pityriasis versicolor.",
+              "C": "Peut provoquer des folliculites.",
+              "D": "Pousse facilement sur milieux pauvres en lipides.",
+              "E": "Apprécie les zones riches en sébum."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Culture nécessite milieux enrichis en lipides."
+          },
+          {
+            id: "myco2-q16",
+            question: "Q16. Candidoses superficielles – facteurs favorisants :",
+            theme: "Candida – facteurs",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Diabète.",
+              "B": "Obésité.",
+              "C": "Antibiothérapie prolongée.",
+              "D": "Corticothérapie générale ou inhalée.",
+              "E": "Sécheresse cutanée extrême sans macération."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Tout ce qui favorise macération ou déficit immunitaire favorise Candida."
+          },
+          {
+            id: "myco2-q17",
+            question: "Q17. Différencier intertrigo candida vs dermatophyte :",
+            theme: "Diagnostic différentiel plis",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Lésions satellites → plutôt Candida.",
+              "B": "Bordure annulaire active → plutôt dermatophyte.",
+              "C": "Plis sous-mammaires → plus souvent Candida.",
+              "D": "Inguino-crural unilatéral → plutôt dermatophyte.",
+              "E": "Plis interdigital mains chez laveurs → plutôt dermatophyte."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Topographie + aspect clinique orientent beaucoup."
+          },
+          {
+            id: "myco2-q18",
+            question: "Q18. Teigne inflammatoire (kérion) :",
+            theme: "Teignes – kérion",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Forme inflammatoire de teigne.",
+              "B": "Plaque suppurée douloureuse du cuir chevelu.",
+              "C": "Souvent zoophile.",
+              "D": "Peut laisser une alopécie cicatricielle.",
+              "E": "Guérit spontanément sans traitement."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Urgence diagnostique pour éviter cicatrice définitive."
+          },
+          {
+            id: "myco2-q19",
+            question: "Q19. Traitement des onychomycoses :",
+            theme: "Traitement ongles",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Durée longue (plusieurs mois).",
+              "B": "Terbinafine per os possible pour les dermatophytes.",
+              "C": "Itraconazole per os possible en cure intermittente.",
+              "D": "Le vernis seul suffit pour toutes les formes sévères.",
+              "E": "L’identification de l’agent oriente le choix du traitement."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Topique seul pour atteintes très limitées ; sinon traitement systémique."
+          },
+          {
+            id: "myco2-q20",
+            question: "Q20. Infections fongiques superficielles – résumé :",
+            theme: "Synthèse",
+            chapter: "Chapitre 2",
+            options: {
+              "A": "Dermatophytes digèrent la kératine.",
+              "B": "Candida touche volontiers plis et muqueuses.",
+              "C": "Malassezia touche zones séborrhéiques.",
+              "D": "La topographie oriente beaucoup le diagnostic.",
+              "E": "Les antifongiques systémiques sont toujours nécessaires."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Bien repérer les patterns : dermatophytes = kératine ; Candida = plis/muqueuses ; Malassezia = sébum."
+          }
+        ]
       },
       "Virologie": {
         "VIH": [
           {
             id: "hiv-q1",
-            question: "Q1. Primo-infection VIH :",
+            question: "Q1. Primo-infection VIH : clinique",
             theme: "Primo-infection",
             chapter: "VIH",
             options: {
               "A": "Peut être asymptomatique.",
-              "B": "Peut donner un tableau pseudo-grippal ou mononucléosique.",
-              "C": "Les anticorps sont toujours positifs d’emblée.",
-              "D": "La charge virale est élevée.",
-              "E": "C’est une période très contagieuse."
+              "B": "Peut mimer une mononucléose.",
+              "C": "Donne toujours une infection opportuniste grave d’emblée.",
+              "D": "Survient 1 à 6 semaines après contamination.",
+              "E": "Est une période très contagieuse."
             },
             correct: ["A","B","D","E"],
-            advice: "Primo-infection = charge virale très élevée, sérologie parfois négative."
+            advice: "Charge virale très élevée en primo-infection → forte contagiosité."
           },
           {
             id: "hiv-q2",
@@ -1950,7 +1581,7 @@
               "E": "Le TROD suffit pour dépister un nouveau-né."
             },
             correct: ["A","B","C","D"],
-            advice: "ELISA = test de dépistage principal ; TROD = seulement Ac, plus tardif en primo-infection."
+            advice: "Chez le nouveau-né, sérologie non interprétable → PCR."
           },
           {
             id: "hiv-q3",
@@ -1965,7 +1596,7 @@
               "E": "Eau potable."
             },
             correct: ["A","B","C"],
-            advice: "Transmission = sexuelle, sanguine, materno-fœtale."
+            advice: "Transmission sexuelle, sanguine, materno-foetale."
           },
           {
             id: "hiv-q4",
@@ -1975,197 +1606,167 @@
             options: {
               "A": "ARN viral plasmatique.",
               "B": "ADN proviral.",
-              "C": "Western blot.",
-              "D": "Antigène p24.",
+              "C": "Antigène p24.",
+              "D": "Western blot.",
               "E": "TROD."
             },
-            correct: ["A","B","D"],
-            advice: "Direct = ARN, ADN proviral, Ag p24."
+            correct: ["A","B","C"],
+            advice: "Direct = détection du virus ou de ses antigènes."
           },
           {
             id: "hiv-q5",
-            question: "Q5. Primo-infection : biologie",
-            theme: "Primo-infection",
-            chapter: "VIH",
-            options: {
-              "A": "L’ARN viral apparaît très tôt.",
-              "B": "L’Ag p24 peut être détecté.",
-              "C": "Les anticorps sont immédiatement positifs.",
-              "D": "Le Western blot peut être négatif.",
-              "E": "La charge virale est très élevée."
-            },
-            correct: ["A","B","D","E"],
-            advice: "Sérologie parfois négative en primo-infection, penser ELISA combiné + charge virale."
-          },
-          {
-            id: "hiv-q6",
-            question: "Q6. Histoire naturelle du VIH :",
-            theme: "Évolution",
-            chapter: "VIH",
-            options: {
-              "A": "La phase chronique est souvent silencieuse.",
-              "B": "Il existe une déplétion progressive des CD4.",
-              "C": "Il n’y a plus de réplication virale en phase chronique.",
-              "D": "Des infections opportunistes peuvent survenir.",
-              "E": "Il augmente le risque de certains cancers."
-            },
-            correct: ["A","B","D","E"],
-            advice: "Réplication virale persistante même en phase asymptomatique."
-          },
-          {
-            id: "hiv-q7",
-            question: "Q7. Cellules cibles du VIH :",
-            theme: "Cellules cibles",
-            chapter: "VIH",
-            options: {
-              "A": "LT CD4+.",
-              "B": "Macrophages.",
-              "C": "Cellules dendritiques.",
-              "D": "Lymphocytes B.",
-              "E": "Hépatocytes."
-            },
-            correct: ["A","B","C"],
-            advice: "Réservoirs = LT CD4 mémoire + macrophages + cellules dendritiques."
-          },
-          {
-            id: "hiv-q8",
-            question: "Q8. Variabilité du VIH :",
-            theme: "Variabilité",
-            chapter: "VIH",
-            options: {
-              "A": "Due à la reverse transcriptase peu fidèle.",
-              "B": "Explique les résistances.",
-              "C": "Permet l’échappement immunitaire.",
-              "D": "Sans conséquence clinique.",
-              "E": "Favorisée par une mauvaise observance."
-            },
-            correct: ["A","B","C","E"],
-            advice: "Variabilité = résistances + échappement → d’où trithérapies et observance."
-          },
-          {
-            id: "hiv-q9",
-            question: "Q9. Structure virale du VIH :",
-            theme: "Structure",
-            chapter: "VIH",
-            options: {
-              "A": "Virus enveloppé.",
-              "B": "Gènes gag, pol, env.",
-              "C": "gp120/gp41 = enveloppe.",
-              "D": "Génome ADN double brin.",
-              "E": "Capside p24."
-            },
-            correct: ["A","B","C","E"],
-            advice: "Virus enveloppé à ARN simple brin diploïde."
-          },
-          {
-            id: "hiv-q10",
-            question: "Q10. Attachement/entrée du VIH :",
-            theme: "Entrée virale",
-            chapter: "VIH",
-            options: {
-              "A": "gp120 ↔ CD4.",
-              "B": "CCR5 et CXCR4 = corécepteurs.",
-              "C": "gp41 assure la fusion.",
-              "D": "Les souches R5 utilisent CXCR4.",
-              "E": "Il existe des souches duales."
-            },
-            correct: ["A","B","C","E"],
-            advice: "R5 = CCR5 ; X4 = CXCR4 ; R5X4 utilisent les deux."
-          },
-          {
-            id: "hiv-q11",
-            question: "Q11. Reverse transcription :",
-            theme: "Cycle viral",
-            chapter: "VIH",
-            options: {
-              "A": "Produit un ADN double brin.",
-              "B": "Réalisée grâce à une enzyme virale.",
-              "C": "Très fidèle.",
-              "D": "A lieu dans le cytoplasme.",
-              "E": "Nécessite l’ARN viral."
-            },
-            correct: ["A","B","D","E"],
-            advice: "RT virale, très infidèle, avec activité RNAse H."
-          },
-          {
-            id: "hiv-q12",
-            question: "Q12. Intégration du VIH :",
-            theme: "Cycle viral",
-            chapter: "VIH",
-            options: {
-              "A": "Rendue possible par l’intégrase.",
-              "B": "L’ADN proviral est intégré dans l’ADN cellulaire.",
-              "C": "Processus réversible.",
-              "D": "Permet une expression continue du virus.",
-              "E": "Ne concerne que les macrophages."
-            },
-            correct: ["A","B","D"],
-            advice: "Intégration irréversible dans le génome cellulaire."
-          },
-          {
-            id: "hiv-q13",
-            question: "Q13. Diagnostic indirect (VIH) :",
-            theme: "Diagnostic indirect",
-            chapter: "VIH",
-            options: {
-              "A": "Recherche d’anticorps.",
-              "B": "Western blot.",
-              "C": "ELISA combiné.",
-              "D": "Charge virale.",
-              "E": "Ag p24."
-            },
-            correct: ["A","B","C"],
-            advice: "Indirect = anticorps (ELISA, WB, TROD)."
-          },
-          {
-            id: "hiv-q14",
-            question: "Q14. Cinétique des marqueurs VIH :",
+            question: "Q5. Cinétique des marqueurs VIH :",
             theme: "Marqueurs",
             chapter: "VIH",
             options: {
               "A": "ARN viral apparaît en premier.",
               "B": "Ag p24 ensuite.",
               "C": "Anticorps plus tard.",
-              "D": "Le TROD devient positif très tôt.",
-              "E": "ELISA combiné réduit la fenêtre sérologique."
+              "D": "Le TROD devient positif dès J2.",
+              "E": "L’ELISA combiné réduit la fenêtre sérologique."
             },
             correct: ["A","B","C","E"],
-            advice: "Ordre : ARN → p24 → Ac ; TROD plus tardif que ELISA combiné."
+            advice: "Ordre : ARN → p24 → Ac. TROD plus tardif."
           },
           {
-            id: "hiv-q15",
-            question: "Q15. Charge virale :",
+            id: "hiv-q6",
+            question: "Q6. Cellules cibles du VIH :",
+            theme: "Cellules cibles",
+            chapter: "VIH",
+            options: {
+              "A": "LT CD4+.",
+              "B": "Macrophages.",
+              "C": "Cellules dendritiques.",
+              "D": "Hépatocytes.",
+              "E": "Neurones."
+            },
+            correct: ["A","B","C"],
+            advice: "Récepteur CD4 + co-récepteurs (CCR5/CXCR4)."
+          },
+          {
+            id: "hiv-q7",
+            question: "Q7. Structure virale du VIH :",
+            theme: "Structure",
+            chapter: "VIH",
+            options: {
+              "A": "Virus enveloppé.",
+              "B": "Gènes gag, pol, env.",
+              "C": "gp120/gp41 = glycoprotéines d’enveloppe.",
+              "D": "Génome ADN double brin.",
+              "E": "Capside p24."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Rétrovirus à ARN simple brin diploïde."
+          },
+          {
+            id: "hiv-q8",
+            question: "Q8. Entrée du VIH dans la cellule :",
+            theme: "Attachement / entrée",
+            chapter: "VIH",
+            options: {
+              "A": "gp120 se fixe sur CD4.",
+              "B": "Co-récepteurs CCR5 ou CXCR4.",
+              "C": "gp41 assure la fusion.",
+              "D": "Les souches R5 utilisent CXCR4.",
+              "E": "Il existe des souches duales R5X4."
+            },
+            correct: ["A","B","C","E"],
+            advice: "R5 = CCR5, X4 = CXCR4."
+          },
+          {
+            id: "hiv-q9",
+            question: "Q9. Reverse transcription :",
+            theme: "Cycle viral",
+            chapter: "VIH",
+            options: {
+              "A": "Permet de synthétiser un ADN double brin.",
+              "B": "Est assurée par une enzyme virale.",
+              "C": "Est très fidèle.",
+              "D": "A lieu dans le cytoplasme.",
+              "E": "Nécessite l’ARN viral."
+            },
+            correct: ["A","B","D","E"],
+            advice: "Enzyme peu fidèle → quasi-espèces et résistances."
+          },
+          {
+            id: "hiv-q10",
+            question: "Q10. Intégration du VIH :",
+            theme: "Cycle viral",
+            chapter: "VIH",
+            options: {
+              "A": "Permet l’intégration de l’ADN proviral dans l’ADN cellulaire.",
+              "B": "Est assurée par l’intégrase.",
+              "C": "Est réversible.",
+              "D": "Explique la persistance de réservoirs viraux.",
+              "E": "Ne concerne que les macrophages."
+            },
+            correct: ["A","B","D"],
+            advice: "Intégration = irréversible, réservoirs latents."
+          },
+          {
+            id: "hiv-q11",
+            question: "Q11. Diagnostic indirect du VIH :",
+            theme: "Diagnostic indirect",
+            chapter: "VIH",
+            options: {
+              "A": "Recherche d’anticorps.",
+              "B": "ELISA combiné.",
+              "C": "Western blot de confirmation.",
+              "D": "Charge virale.",
+              "E": "Ag p24."
+            },
+            correct: ["A","B","C"],
+            advice: "Indirect = sérologie (Ac)."
+          },
+          {
+            id: "hiv-q12",
+            question: "Q12. Charge virale VIH :",
             theme: "Charge virale",
             chapter: "VIH",
             options: {
               "A": "Mesurée par RT-PCR.",
               "B": "Indétectable < 50 copies/mL.",
-              "C": "Suit l’efficacité du traitement.",
-              "D": "Utile en primo-infection.",
-              "E": "Utilisée seule pour diagnostiquer un adulte en dépistage de masse."
+              "C": "Sert au suivi thérapeutique.",
+              "D": "Est utile en primo-infection.",
+              "E": "Suffit à elle seule pour dépister un adulte en population générale."
             },
             correct: ["A","B","C","D"],
-            advice: "Charge virale = outil central de suivi et de diagnostic précoce."
+            advice: "Usage principal = suivi et diagnostic précoce."
           },
           {
-            id: "hiv-q16",
-            question: "Q16. Traitement antirétroviral (ARV) :",
+            id: "hiv-q13",
+            question: "Q13. Histoire naturelle du VIH :",
+            theme: "Évolution",
+            chapter: "VIH",
+            options: {
+              "A": "Phase aiguë (primo-infection) initiale.",
+              "B": "Phase chronique souvent asymptomatique.",
+              "C": "Diminution progressive des CD4.",
+              "D": "Risque d’infections opportunistes en phase avancée.",
+              "E": "Absence de réplication virale en phase chronique."
+            },
+            correct: ["A","B","C","D"],
+            advice: "La réplication virale persiste même en phase asymptomatique."
+          },
+          {
+            id: "hiv-q14",
+            question: "Q14. Traitement antirétroviral (ARV) :",
             theme: "Traitement",
             chapter: "VIH",
             options: {
-              "A": "Indiqué pour tout patient VIH+.",
-              "B": "Débuté précocement.",
-              "C": "Monothérapie suffisante.",
-              "D": "Objectif = CV indétectable.",
-              "E": "Réduit la transmission."
+              "A": "Repose sur une combinaison de plusieurs ARV.",
+              "B": "Indiqué pour tout patient VIH+.",
+              "C": "Doit être débuté précocement.",
+              "D": "Objectif = charge virale indétectable.",
+              "E": "N’a aucun impact sur la transmission."
             },
-            correct: ["A","B","D","E"],
-            advice: "Traitement universel, précoce, combiné."
+            correct: ["A","B","C","D"],
+            advice: "ARV = traitement chronique, combiné, débuté tôt."
           },
           {
-            id: "hiv-q17",
-            question: "Q17. Classes d’ARV :",
-            theme: "ARV",
+            id: "hiv-q15",
+            question: "Q15. Classes d’ARV :",
+            theme: "ARV – classes",
             chapter: "VIH",
             options: {
               "A": "INTI.",
@@ -2175,37 +1776,67 @@
               "E": "Bêta-lactamines."
             },
             correct: ["A","B","C","D"],
-            advice: "Bêta-lactamines ≠ ARV ; retenir INTI, INNTI, IP, inhibiteurs d’intégrase, d’entrée."
+            advice: "Bêta-lactamines = antibiotiques, pas ARV."
           },
           {
-            id: "hiv-q18",
-            question: "Q18. Résistance / échappement :",
+            id: "hiv-q16",
+            question: "Q16. Résistances aux ARV :",
             theme: "Résistances",
             chapter: "VIH",
             options: {
-              "A": "Favorisé par mauvaise observance.",
-              "B": "Détecté par génotypage.",
-              "C": "S’accompagne d’une remontée de CV.",
-              "D": "Ne nécessite jamais d’adaptation thérapeutique.",
-              "E": "Favorisé par monothérapie."
+              "A": "Favorisées par la mauvaise observance.",
+              "B": "Mises en évidence par génotypage.",
+              "C": "S’accompagnent d’une remontée de la charge virale.",
+              "D": "Favorisées par la monothérapie.",
+              "E": "Ne nécessitent jamais d’adaptation thérapeutique."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Échec virologique → vérifier observance + adapter schéma."
+          },
+          {
+            id: "hiv-q17",
+            question: "Q17. TPE (traitement post-exposition) VIH :",
+            theme: "TPE",
+            chapter: "VIH",
+            options: {
+              "A": "Doit être débuté le plus tôt possible.",
+              "B": "Indiqué si la source est VIH+ à CV détectable.",
+              "C": "Un TROD chez la source aide à décider.",
+              "D": "Toujours inutile après 24 h.",
+              "E": "S’accompagne d’un dépistage des autres IST."
             },
             correct: ["A","B","C","E"],
-            advice: "Échec virologique = vérifier observance + adapter traitement."
+            advice: "TPE = urgence, fenêtre idéale < 48 h."
+          },
+          {
+            id: "hiv-q18",
+            question: "Q18. PrEP (prophylaxie pré-exposition) :",
+            theme: "PrEP",
+            chapter: "VIH",
+            options: {
+              "A": "ARV chez des sujets non infectés à haut risque.",
+              "B": "Nécessite un dépistage VIH négatif avant début.",
+              "C": "Supprime toute nécessité de préservatif.",
+              "D": "Nécessite un suivi régulier.",
+              "E": "Réservée aux patients VIH+."
+            },
+            correct: ["A","B","D"],
+            advice: "PrEP = prévention additionnelle, ne remplace pas prévention des autres IST."
           },
           {
             id: "hiv-q19",
-            question: "Q19. PPE / exposition à risque :",
-            theme: "TPE/PPE",
+            question: "Q19. U=U (Indétectable = Intransmissible) :",
+            theme: "Prévention",
             chapter: "VIH",
             options: {
-              "A": "Doit être débutée rapidement.",
-              "B": "Utile si la source est VIH+ à CV détectable.",
-              "C": "Un TROD chez la source aide à décider.",
-              "D": "Toujours inutile après 24 h.",
-              "E": "Inclut dépistage IST."
+              "A": "Charge virale < 50 copies/mL = indétectable.",
+              "B": "Il n’y a plus de virus dans l’organisme.",
+              "C": "Pas de transmission sexuelle si observance et CV indétectable maintenue.",
+              "D": "Plus besoin de suivi.",
+              "E": "Basé sur de grandes études observationnelles."
             },
-            correct: ["A","B","C","E"],
-            advice: "TPE = urgence, prise en charge globale (VIH + IST)."
+            correct: ["A","C","E"],
+            advice: "U=U = message fort, mais nécessite observance + suivi régulier."
           },
           {
             id: "hiv-q20",
@@ -2213,123 +1844,48 @@
             theme: "Grossesse",
             chapter: "VIH",
             options: {
-              "A": "Sérologie proposée systématiquement.",
-              "B": "CV maternelle = facteur clé.",
-              "C": "Sans prévention, risque ≈ 20-25%.",
+              "A": "Sérologie VIH proposée systématiquement.",
+              "B": "Charge virale maternelle = facteur clé pour la transmission.",
+              "C": "Sans prévention, risque de transmission ≈ 20–25%.",
               "D": "Avec prévention optimale, risque < 1%.",
-              "E": "Allaitement toujours autorisé."
+              "E": "L’allaitement est toujours sans risque."
             },
             correct: ["A","B","C","D"],
-            advice: "Prévention = CV indétectable + mesures adaptées ; allaitement à discuter selon recommandations locales."
+            advice: "La stratégie vise charge virale indétectable en fin de grossesse."
           },
           {
             id: "hiv-q21",
-            question: "Q21. Facteurs augmentant la transmission mère-enfant :",
-            theme: "Grossesse",
-            chapter: "VIH",
-            options: {
-              "A": "Charge virale élevée.",
-              "B": "Absence d’ARV.",
-              "C": "Rupture prolongée des membranes.",
-              "D": "Allaitement.",
-              "E": "Césarienne programmée sous CV indétectable."
-            },
-            correct: ["A","B","C","D"],
-            advice: "Tous ces facteurs augmentent le risque de TME."
-          },
-          {
-            id: "hiv-q22",
-            question: "Q22. Nouveau-né de mère VIH+ :",
+            question: "Q21. Nouveau-né de mère VIH+ :",
             theme: "Nouveau-né",
             chapter: "VIH",
             options: {
-              "A": "Sérologie non interprétable.",
-              "B": "Diagnostic par PCR.",
+              "A": "Sérologie VIH non interprétable.",
+              "B": "Diagnostic par PCR VIH.",
               "C": "ELISA négatif à J1 élimine la maladie.",
-              "D": "Prophylaxie ARV possible.",
-              "E": "PCR répétées pour confirmer l’absence d’infection."
+              "D": "Une prophylaxie ARV néonatale est possible.",
+              "E": "Les PCR doivent être répétées."
             },
             correct: ["A","B","D","E"],
-            advice: "Les Ac maternels faussent la sérologie → PCR nécessaires."
+            advice: "Ac maternels traversent le placenta, d’où besoin de PCR."
+          },
+          {
+            id: "hiv-q22",
+            question: "Q22. VIH-1 vs VIH-2 :",
+            theme: "VIH-1 / VIH-2",
+            chapter: "VIH",
+            options: {
+              "A": "VIH-2 est moins pathogène.",
+              "B": "VIH-2 est plus fréquent en Afrique de l’Ouest.",
+              "C": "La charge virale est souvent plus basse dans VIH-2.",
+              "D": "Les tests de charge virale sont toujours parfaitement adaptés au VIH-2.",
+              "E": "Les recommandations thérapeutiques peuvent différer."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Penser VIH-2 devant CV très basse + origine ouest-africaine."
           },
           {
             id: "hiv-q23",
-            question: "Q23. U=U (Indétectable = Intransmissible) :",
-            theme: "Prévention",
-            chapter: "VIH",
-            options: {
-              "A": "CV < 50 copies/mL = indétectable.",
-              "B": "Le virus disparaît de l’organisme.",
-              "C": "Pas de transmission sexuelle si observance correcte.",
-              "D": "Plus besoin de suivi.",
-              "E": "Basé sur de grandes études."
-            },
-            correct: ["A","C","E"],
-            advice: "U=U = puissant message de santé publique, mais nécessite observance + suivi."
-          },
-          {
-            id: "hiv-q24",
-            question: "Q24. Syndrome mononucléosique et VIH :",
-            theme: "Primo-infection",
-            chapter: "VIH",
-            options: {
-              "A": "La primo-infection peut mimer une mononucléose à EBV.",
-              "B": "NFS : lymphocytes activés possibles.",
-              "C": "Positivité EBV exclut le VIH.",
-              "D": "Survient 1 à 6 semaines après contamination.",
-              "E": "Dépistage VIH indiqué en cas de contexte à risque."
-            },
-            correct: ["A","B","D","E"],
-            advice: "Toujours penser VIH devant mononucléose atypique + contexte à risque."
-          },
-          {
-            id: "hiv-q25",
-            question: "Q25. VIH-1 vs VIH-2 :",
-            theme: "VIH-1/VIH-2",
-            chapter: "VIH",
-            options: {
-              "A": "VIH-2 moins pathogène.",
-              "B": "Plus fréquent en Afrique de l’Ouest.",
-              "C": "CV souvent plus basse.",
-              "D": "Les tests de charge virale sont toujours parfaitement adaptés.",
-              "E": "Recommandations thérapeutiques parfois différentes."
-            },
-            correct: ["A","B","C","E"],
-            advice: "Penser VIH-2 si CV basse + origine ouest-africaine."
-          },
-          {
-            id: "hiv-q26",
-            question: "Q26. Quasi-espèces VIH :",
-            theme: "Variabilité",
-            chapter: "VIH",
-            options: {
-              "A": "Explique l’échec des monothérapies.",
-              "B": "Justifie les trithérapies.",
-              "C": "Favorise l’échappement en cas de mauvaise observance.",
-              "D": "Sans impact clinique.",
-              "E": "Oriente le traitement via génotypage des résistances."
-            },
-            correct: ["A","B","C","E"],
-            advice: "Variabilité = pivot des résistances et de l’adaptation thérapeutique."
-          },
-          {
-            id: "hiv-q27",
-            question: "Q27. PrEP :",
-            theme: "PrEP",
-            chapter: "VIH",
-            options: {
-              "A": "ARV chez sujets non infectés.",
-              "B": "Dépistage VIH avant initiation.",
-              "C": "Supprime l’usage du préservatif.",
-              "D": "Nécessite suivi régulier.",
-              "E": "Réservée aux patients VIH+."
-            },
-            correct: ["A","B","D"],
-            advice: "PrEP = prévention additionnelle, ne remplace pas la prévention des autres IST."
-          },
-          {
-            id: "hiv-q28",
-            question: "Q28. Complications du VIH :",
+            question: "Q23. Complications du VIH :",
             theme: "Complications",
             chapter: "VIH",
             options: {
@@ -2337,40 +1893,115 @@
               "B": "Lymphomes.",
               "C": "Sarcome de Kaposi.",
               "D": "Atteintes neurocognitives.",
-              "E": "Péritonite bactérienne obligatoire."
+              "E": "Aucune pathologie tumorale associée."
             },
             correct: ["A","B","C","D"],
-            advice: "Complications infectieuses, tumorales, neurologiques et métaboliques."
+            advice: "Risque infectieux, tumoral, cardiovasculaire, neurocognitif."
           },
           {
-            id: "hiv-q29",
-            question: "Q29. Western blot VIH :",
+            id: "hiv-q24",
+            question: "Q24. Western blot VIH :",
             theme: "Diagnostic indirect",
             chapter: "VIH",
             options: {
               "A": "Confirme un ELISA positif.",
-              "B": "Test de 1re intention.",
-              "C": "Nécessite plusieurs bandes spécifiques.",
+              "B": "Utilisé en 1re intention.",
+              "C": "Très spécifique.",
               "D": "Peut être négatif en primo-infection.",
-              "E": "Très spécifique."
+              "E": "Interprétation basée sur un certain nombre de bandes."
             },
             correct: ["A","C","D","E"],
-            advice: "Western blot = test de confirmation, pas de dépistage."
+            advice: "Test de confirmation, pas de dépistage."
+          },
+          {
+            id: "hiv-q25",
+            question: "Q25. Syndrome mononucléosique et VIH :",
+            theme: "Primo-infection",
+            chapter: "VIH",
+            options: {
+              "A": "La primo-infection peut mimer une mononucléose.",
+              "B": "NFS peut montrer des lymphocytes activés.",
+              "C": "Une sérologie EBV positive exclut le VIH.",
+              "D": "Contexte d’exposition à risque doit faire évoquer le VIH.",
+              "E": "Le dépistage VIH est indiqué."
+            },
+            correct: ["A","B","D","E"],
+            advice: "Penser VIH devant mononucléose atypique + exposition à risque."
+          },
+          {
+            id: "hiv-q26",
+            question: "Q26. Variabilité du VIH :",
+            theme: "Variabilité / quasi-espèces",
+            chapter: "VIH",
+            options: {
+              "A": "Due à l’infidélité de la reverse transcriptase.",
+              "B": "Explique les quasi-espèces.",
+              "C": "Justifie la trithérapie.",
+              "D": "Favorise l’échappement en cas de mauvaise observance.",
+              "E": "Sans impact clinique."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Variabilité = clé des résistances et de l’échappement."
+          },
+          {
+            id: "hiv-q27",
+            question: "Q27. Infections opportunistes et VIH :",
+            theme: "Infections opportunistes",
+            chapter: "VIH",
+            options: {
+              "A": "Pneumocystose.",
+              "B": "Toxoplasmose cérébrale.",
+              "C": "Candidose œsophagienne.",
+              "D": "Tuberculose.",
+              "E": "Rhinopharyngite virale banale."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Certaines infections sont définissant le stade SIDA."
+          },
+          {
+            id: "hiv-q28",
+            question: "Q28. Surveillance d’un patient VIH sous traitement :",
+            theme: "Suivi",
+            chapter: "VIH",
+            options: {
+              "A": "Charge virale régulière.",
+              "B": "CD4 réguliers.",
+              "C": "Bilan IST en fonction des pratiques.",
+              "D": "Suivi des effets indésirables des ARV.",
+              "E": "Aucun suivi n’est nécessaire si CV indétectable."
+            },
+            correct: ["A","B","C","D"],
+            advice: "Suivi à vie, même sous traitement efficace."
+          },
+          {
+            id: "hiv-q29",
+            question: "Q29. Exposition sexuelle à risque :",
+            theme: "TPE / IST",
+            chapter: "VIH",
+            options: {
+              "A": "Évaluer le statut VIH de la source.",
+              "B": "Un TROD chez la source peut être utile.",
+              "C": "TPE indiquée si CV détectable chez la source.",
+              "D": "Aucun dépistage d’autres IST n’est nécessaire.",
+              "E": "Conseiller dépistage d’autres IST chez le patient exposé."
+            },
+            correct: ["A","B","C","E"],
+            advice: "Prise en charge globale : VIH + IST."
           },
           {
             id: "hiv-q30",
-            question: "Q30. Exposition sexuelle à risque :",
-            theme: "TPE",
+            question: "Q30. Prévention combinée du VIH :",
+            theme: "Prévention",
             chapter: "VIH",
             options: {
-              "A": "Toujours évaluer le statut de la source.",
-              "B": "TPE indiquée si CV détectable chez la source VIH+.",
-              "C": "TROD de la source peut aider à décider.",
-              "D": "Pas d’autre dépistage nécessaire.",
-              "E": "Dépistage d’autres IST recommandé."
+              "A": "Préservatifs.",
+              "B": "PrEP pour certains groupes.",
+              "C": "TPE en cas d’exposition.",
+              "D": "Traitement des personnes VIH+ (TasP).",
+              "E": "Isolement respiratoire systématique."
             },
-            correct: ["A","B","C","E"],
-            advice: "Prise en charge globale (VIH + IST) après exposition."
+            correct: ["A","B","C","D"],
+            advice: "Prévention combinée = outils multiples adaptés au risque."
           }
         ],
         "Hépatite B": [],
@@ -2389,15 +2020,12 @@
      * LANCEMENT
      *********************/
     function render() {
-      const currentUser = loadLocal(STORAGE_KEY_USER, null);
-      if (!currentUser) {
-        renderLogin();
-      } else {
-        renderMain(currentUser);
-      }
+      const user = loadLocal(STORAGE_KEY_USER, null);
+      if (!user) renderLogin();
+      else renderMain(user);
     }
 
     render();
   </script>
 </body>
-  </html>
+</html>
